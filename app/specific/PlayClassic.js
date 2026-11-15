@@ -538,12 +538,20 @@ function PlayClassic_updateDelay(live, seconds) {
 }
 
 function PlayClassic_chatModeNames() {
+    if (Play_MultiEnable && ClassicMulti.entered)
+        return ClassicShell_ru() ? ['Да — поверх окон', 'Нет', 'Рядом с основным окном'] : ['Yes — over windows', 'No', 'Beside the main window'];
     return ClassicShell_ru() ? ['Да — поверх видео', 'Нет', 'Разделение — рядом с видео'] : ['Yes — over video', 'No', 'Split — next to video'];
 }
 function PlayClassic_chatModeIndex() {
+    if (Play_MultiEnable && ClassicMulti.entered) return !ClassicMulti.chatWanted ? 1 : Play_Multi_MainBig ? 2 : 0;
     return !Play_isChatShown() ? 1 : Play_isFullScreen ? 0 : 2;
 }
 function PlayClassic_setChatMode(index) {
+    if (Play_MultiEnable && ClassicMulti.entered) {
+        if (index !== 1) ClassicMulti_setLayout(index === 2);
+        ClassicMulti_toggleChat(index !== 1);
+        return;
+    }
     var full = index !== 2;
     if (Play_isFullScreen !== full) Play_controls[Play_controlsChatSide].enterKey(PlayClassic_kind());
     Play_ChatEnable = index !== 1;

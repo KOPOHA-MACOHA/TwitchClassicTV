@@ -2753,6 +2753,7 @@ function Play_MakeControls() {
                 return;
             }
 
+            if (!Play_MultiEnable && PlayClassic_enabled()) ClassicMulti_prepare();
             Play_MultiEnable = !Play_MultiEnable;
             if (Play_MultiEnable) {
                 Play_hidePanel();
@@ -2811,7 +2812,7 @@ function Play_MakeControls() {
                     Play_MultiArray[0].data[3],
                     !Main_A_includes_B(Play_MultiArray[0].data[1], STR_USER_HOSTED_BY) ? Play_MultiArray[0].data[15] : 'HOSTING'
                 );
-                if (PlayClassic_enabled()) ClassicMulti_open();
+                if (PlayClassic_enabled()) ClassicMulti_enter();
             } else {
                 OSInterface_DisableMultiStream();
                 Play_Multi_UnSetPanel(shutdown);
@@ -2928,6 +2929,7 @@ function Play_MakeControls() {
         values: null,
         defaultValue: null,
         enterKey: function () {
+            if (Play_MultiEnable && ClassicMulti.entered) { ClassicMulti_toggleChat(!ClassicMulti.chatWanted); return; }
             if ((!Play_isFullScreen && !Play_MultiEnable) || Play_Multi_MainBig) return;
 
             if (!Play_isChatShown() && !Play_isEndDialogVisible()) {

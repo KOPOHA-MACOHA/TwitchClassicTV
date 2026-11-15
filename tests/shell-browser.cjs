@@ -2,7 +2,12 @@ const {chromium} = require('playwright-core'),
     assert = require('assert/strict');
 const {PNG} = require('pngjs');
 (async () => {
-    const browser = await chromium.launch({executablePath: process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()), headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
+    const browser = await chromium.launch({
+        executablePath:
+            process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()),
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage']
+    });
     const page = await browser.newPage({viewport: {width: 1920, height: 1080}, locale: 'ru-RU'}),
         errors = [];
     page.on('pageerror', e => errors.push(String(e)));
@@ -140,7 +145,7 @@ const {PNG} = require('pngjs');
         assert.equal(await page.evaluate(() => ClassicShell_navIndex), 4);
         await page.keyboard.press('Enter');
         assert.equal(await page.locator('#classic_preferences').count(), 1);
-        assert.equal(await page.locator('#classic_preferences_rows button').count(), 7);
+        assert.equal(await page.locator('#classic_preferences_rows button').count(), 8);
         assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('settings_scroll')).visibility), 'hidden');
         await page.screenshot({path: 'tests/settings-classic.png'});
         await page.keyboard.press('ArrowUp');
@@ -169,7 +174,7 @@ const {PNG} = require('pngjs');
             await page.evaluate(() => Settings_value.default_quality.defaultValue + 1)
         );
         await page.keyboard.press('Escape');
-        assert.equal(await page.locator('#classic_preferences_rows button').count(), 7);
+        assert.equal(await page.locator('#classic_preferences_rows button').count(), 8);
         await page.keyboard.press('ArrowDown');
         await page.keyboard.press('Enter');
         assert.equal(await page.locator('#classic_preferences_rows button').count(), 5);
@@ -212,7 +217,7 @@ const {PNG} = require('pngjs');
         assert.ok((await page.locator('#classic_preferences_rows .is-focused').innerText()).includes('Оформление чата'));
 
         await page.keyboard.press('Escape');
-        assert.equal(await page.locator('#classic_preferences_rows button').count(), 7);
+        assert.equal(await page.locator('#classic_preferences_rows button').count(), 8);
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('#classic_preferences').count(), 0);
         // Enter activates one stream; no long-press refresh or key-up double action.

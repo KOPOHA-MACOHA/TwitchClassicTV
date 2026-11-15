@@ -94,6 +94,59 @@ const assert = require('assert/strict');
             }
             await page.evaluate(() => document.getElementById('zero_geometry').remove());
         }
+        // A media preview starts below the nick/badges and does not move their baseline.
+        const mediaLayout = await page.evaluate(async () => {
+            ClassicFeatures_set('chat_images', true);
+            const host = document.createElement('div');
+            host.id = 'media_layout';
+            host.style.cssText = 'position:fixed;top:100px;left:20px;width:700px;z-index:999;background:#18181b;color:white';
+            const badge = '<img class="badge" style="width:24px;height:24px" src="https://fixture.test/badge.png">';
+            for (const [id, message] of [
+                ['plain', 'Before'],
+                ['media', 'Before https://example.test/a.png https://example.test/b.webp After']
+            ]) {
+                const line = document.createElement('div');
+                line.id = 'media_' + id;
+                line.className = 'chat_line';
+                line.style.cssText = 'font:24px/1.4 Inter';
+                line.innerHTML =
+                    badge +
+                    '<span class="classic-chat-nick">Nickname:</span> <span class="message">' +
+                    ClassicChat_render([message], 0, 0) +
+                    '</span>';
+                host.appendChild(line);
+            }
+            document.body.appendChild(host);
+            await Promise.all([...host.querySelectorAll('img')].map(i => i.decode()));
+            const rect = e => {
+                const r = e.getBoundingClientRect();
+                return {top: r.top, bottom: r.bottom, left: r.left, height: r.height};
+            };
+            const plain = host.querySelector('#media_plain'),
+                line = host.querySelector('#media_media');
+            const result = {
+                plain: rect(plain),
+                line: rect(line),
+                plainNick: rect(plain.querySelector('.classic-chat-nick')),
+                nick: rect(line.querySelector('.classic-chat-nick')),
+                plainBadge: rect(plain.querySelector('.badge')),
+                badge: rect(line.querySelector('.badge')),
+                images: [...line.querySelectorAll('.classic-chat-image')].map(rect)
+            };
+            host.remove();
+            ClassicFeatures_set('chat_images', false);
+            return result;
+        });
+        assert.ok(
+            Math.abs(mediaLayout.plainNick.top - mediaLayout.plain.top - (mediaLayout.nick.top - mediaLayout.line.top)) < 1,
+            JSON.stringify(mediaLayout)
+        );
+        assert.ok(
+            Math.abs(mediaLayout.plainBadge.top - mediaLayout.plain.top - (mediaLayout.badge.top - mediaLayout.line.top)) < 1,
+            JSON.stringify(mediaLayout)
+        );
+        assert.ok(mediaLayout.images[0].top >= Math.max(mediaLayout.nick.bottom, mediaLayout.badge.bottom), JSON.stringify(mediaLayout));
+        assert.ok(mediaLayout.images[1].top >= mediaLayout.images[0].bottom, JSON.stringify(mediaLayout));
         const chat = await page.evaluate(() => {
             Main_HideWelcomeDialog();
             Main_HideWarningDialog();

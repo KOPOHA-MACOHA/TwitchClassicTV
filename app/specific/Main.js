@@ -344,6 +344,7 @@ function Main_initWindowsEnd() {
 
     Main_SetStringsSecondary();
     Main_checkVersion();
+    ClassicUpdates_startup();
 }
 
 function Main_CheckDevice() {
@@ -1377,6 +1378,7 @@ function Main_UpdateDialogStartCheck() {
 }
 
 function Main_showUpdateDialog() {
+    if (typeof ClassicBuild !== 'undefined') { ClassicUpdates_showDialog(); return; }
     Main_UpdateDialogTitle();
     Main_PreventClick(true, Main_UpdateDialogKeyFun, true);
     Main_UpdateDialogSet();
@@ -1398,6 +1400,7 @@ function Main_showUpdateDialog() {
 }
 
 function Main_HideUpdateDialog(preventFocus) {
+    if (typeof ClassicBuild !== 'undefined' && ClassicUpdates.dialog) { ClassicUpdates_hideDialog(); return; }
     Main_UpdateCursor = 0;
     Main_HideElement('update_dialog');
     Main_UpdateDialogVisible = false;
@@ -3102,6 +3105,10 @@ function Main_CheckResume(skipPlay) {
     // Called only by JAVA
     Main_PreventClick(false, Main_PreventClickfun);
     Main_isStopped = false;
+    if (ClassicUpdates.dialog && ClassicUpdates.state === 'downloading') {
+        ClassicUpdates.state = 'available'; ClassicUpdates_renderDialog();
+    }
+    ClassicUpdates_offerStartup();
 
     if (Main_isUpdateDialogVisible()) {
         Main_HideLoadDialog();
@@ -3134,7 +3141,7 @@ function Main_CheckResume(skipPlay) {
     Main_CheckResumeVodsId = Main_setTimeout(Main_StartHistoryworker, 10000, Main_CheckResumeVodsId);
 
     Main_checkWebVersionId = Main_setInterval(Main_CheckUpdate, 1000 * 60 * 30, Main_checkWebVersionId); //Check it 60 min
-    Main_checkWebVersionResumeId = Main_setTimeout(Main_CheckUpdate, 3000, Main_checkWebVersionResumeId);
+    Main_checkWebVersionResumeId = Main_setTimeout(typeof ClassicBuild !== 'undefined' ? ClassicUpdates_resume : Main_CheckUpdate, 3000, Main_checkWebVersionResumeId);
 
     //Tecnicly this are only neede if the app fail to refresh when is on background
     UserLiveFeed_CheckRefreshAfterResume();

@@ -445,6 +445,12 @@ function ClassicShell_rootSettings() {
                 ]);
             },
             'settings'
+        ),
+        ClassicShell_row(
+            ClassicShell_ru() ? 'Проверить обновления' : 'Check for updates',
+            'Twitch Classic ' + ClassicBuild.name,
+            ClassicUpdates_manual,
+            'refresh'
         )
     ]);
 }

@@ -159,6 +159,8 @@ const assert = require('assert/strict');
             );
             Main_IsOn_OSInterface = true;
             Play_SetUserHeader();
+            Settings_SetResBitRateMin();
+            window.smallBefore = nativeCalls.filter(c => c.name === 'SetSmallPlayerBitrate').at(-1).args;
             Main_PlayHandleKeyDown();
             Play_controls[Play_MultiStream].enterKey();
         });
@@ -167,6 +169,9 @@ const assert = require('assert/strict');
         assert.equal(await page.locator('#classic_multi .classic-multi-stream').count(), 6);
         assert.equal(await page.locator('#classic_multi [data-multi-id="stream:user0"]').isDisabled(), true);
         assert.equal(await page.evaluate(() => ClassicMulti.selected), 1);
+        assert.equal(await page.locator('#chat_container0').isVisible(), true);
+        assert.deepEqual(await page.evaluate(() => nativeCalls.filter(c => c.name === 'SetSmallPlayerBitrate').at(-1).args), [0, 0]);
+
         assert.equal(await page.locator('#dialog_multi_help').isVisible(), false);
         // Real remote input selects an empty slot then a channel; native named HLS callbacks reach StartMultiStream.
         await page.keyboard.press('Enter');
@@ -192,6 +197,36 @@ const assert = require('assert/strict');
         await page.waitForFunction(() => nativeCalls.some(c => c.name === 'StartMultiStream' && c.args[0] === 3));
         assert.equal(await page.evaluate(() => Play_MultiIsFull()), true);
         assert.deepEqual(await page.evaluate(() => nativeSlots), ['user0', 'user1', 'user2', 'user3']);
+        // Chat can follow an explicitly chosen window without changing the main video.
+        await page.evaluate(() => {
+            ClassicMulti_selectSlot(1);
+            ClassicMulti.cursor = 'chat-source';
+            ClassicMulti_focus();
+        });
+        await page.keyboard.press('Enter');
+        assert.equal(await page.evaluate(() => ChatLive_selectedChannel_id[0]), 'user1');
+        assert.equal(await page.evaluate(() => Play_data.data[14]), 'user0');
+        assert.match(await page.locator('#classic_chat_header0 .classic-chat-title').innerText(), /Channel 1/);
+        await page.evaluate(() => ClassicMulti_setLayout(true));
+        assert.equal(await page.evaluate(() => Play_chat_container.style.left), '67%');
+        assert.equal(await page.evaluate(() => Play_isChatShown()), true);
+        await page.evaluate(() => ClassicMulti_toggleChat(false));
+        assert.equal(await page.evaluate(() => Play_isChatShown()), false);
+        await page.evaluate(() => ClassicMulti_toggleChat(true));
+        // The quality picker updates only the multistream ceiling and restarts active windows.
+        await page.evaluate(() => {
+            ClassicMulti.cursor = 'quality';
+            ClassicMulti_focus();
+        });
+        await page.keyboard.press('Enter');
+        assert.equal(await page.locator('.classic-multi-quality-option').count(), 4);
+        await page.evaluate(() => {
+            ClassicMulti.cursor = 'limit:1080';
+            ClassicMulti_focus();
+        });
+        await page.keyboard.press('Enter');
+        assert.deepEqual(await page.evaluate(() => nativeCalls.filter(c => c.name === 'SetSmallPlayerBitrate').at(-1).args), [0, 1080]);
+        assert.equal(await page.evaluate(() => ClassicMulti.qualityLimit), 1080);
         // Spatial navigation always has one focus and all controls/cards fit inside the panel.
         for (const key of ['ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowUp']) {
             await page.keyboard.press(key);
@@ -283,6 +318,10 @@ const assert = require('assert/strict');
         await page.evaluate(() => Play_controls[Play_MultiStream].enterKey());
         assert.equal(await page.evaluate(() => Play_MultiEnable), false);
         assert.equal(await page.locator('#classic_multi').count(), 0);
+        assert.deepEqual(
+            await page.evaluate(() => nativeCalls.filter(c => c.name === 'SetSmallPlayerBitrate').at(-1).args),
+            await page.evaluate(() => smallBefore)
+        );
         assert.deepEqual(errors, []);
         console.log(
             'PASS: actual multistream entry and Up, four-slot picker, live/followed lists, native HLS callback startup, audio/main/remove, replacement failure and late-response cancellation, one remote focus and contained layout'

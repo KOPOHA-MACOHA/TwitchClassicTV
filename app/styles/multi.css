@@ -170,3 +170,19 @@
     opacity: 0 !important;
     pointer-events: none !important;
 }
+
+.classic-multi-quality-option {
+    display: block;
+    width: 100%;
+    margin: 1vh 0;
+}
+.classic-multi-open #chat_container0 {
+    pointer-events: none;
+}
+.classic-player-ui .classic-chat-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

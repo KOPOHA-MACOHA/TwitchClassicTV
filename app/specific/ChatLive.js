@@ -105,7 +105,8 @@ var ChatLive_ROOMSTATE_Regex = /emote-only=(\d+).*followers-only=(-1|\d+).*r9k=(
 var ChatLive_Base_BTTV_url = 'https://cdn.betterttv.net/emote/';
 //Variable initialization end
 
-function ChatLive_Init(chat_number, SkipClear) {
+function ChatLive_Init(chat_number, SkipClear, channelData) {
+    if (!chat_number && Play_MultiEnable && ClassicMulti.entered) channelData = channelData || ClassicMulti_chatData();
     if (!SkipClear) {
         ChatLive_Clear(chat_number);
     }
@@ -121,8 +122,8 @@ function ChatLive_Init(chat_number, SkipClear) {
 
     ChatLive_SetOptions(
         chat_number,
-        !chat_number ? Play_data.data[14] : PlayExtra_data.data[14],
-        !chat_number ? Play_data.data[6] : PlayExtra_data.data[6]
+        channelData ? channelData[14] : (!chat_number ? Play_data.data[14] : PlayExtra_data.data[14]),
+        channelData ? channelData[6] : (!chat_number ? Play_data.data[6] : PlayExtra_data.data[6])
     );
     ChatLive_StartShared(chat_number, Chat_Id[chat_number]);
 

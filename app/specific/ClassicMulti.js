@@ -36,6 +36,7 @@ function ClassicMulti_close() {
     ClassicPages_cancel(ClassicMulti);
     ClassicMulti_cancelPending();
     ClassicMulti.active = false;
+    ClassicMulti.qualityOpen = false;
     var panel = document.getElementById('classic_multi');
     if (panel) panel.remove();
     document.body.classList.remove('classic-multi-open');
@@ -184,6 +185,9 @@ function ClassicMulti_render() {
         ClassicMulti_button(actions, 'main', ClassicMulti_words('Сделать основным', 'Make main'), function () {
             if (!ClassicMulti.pending) ClassicMulti_makeMain(slot);
         });
+        ClassicMulti_button(actions, 'chat-source', ClassicMulti_words('Чат этого окна', 'Chat from this window'), function () {
+            ClassicMulti_toggleChat(true, Play_MultiArray[slot].data[14]);
+        });
         var remove = ClassicMulti_button(actions, 'remove', ClassicMulti_words('Убрать из окна', 'Remove stream'), function () {
             ClassicMulti_remove(slot);
         });
@@ -194,20 +198,25 @@ function ClassicMulti_render() {
     }
     ClassicMulti_button(
         actions,
+        'chat-toggle',
+        ClassicMulti.chatWanted ? ClassicMulti_words('Скрыть чат', 'Hide chat') : ClassicMulti_words('Показать чат', 'Show chat'),
+        function () {
+            ClassicMulti_toggleChat(!ClassicMulti.chatWanted);
+        }
+    );
+    ClassicMulti_button(
+        actions,
         'layout',
         Play_Multi_MainBig ? ClassicMulti_words('Сетка 2 × 2', '2 × 2 grid') : ClassicMulti_words('Одно большое окно', 'One large window'),
         function () {
-            if (ClassicMulti.pending) return;
-            if (!Play_Multi_MainBig && !Play_MultiArray[0].data.length) {
-                ClassicMulti_makeMain(Play_MultiFirstAvailable());
-                return;
-            }
-            Play_Multi_MainBig = !Play_Multi_MainBig;
-            OSInterface_EnableMultiStream(Play_Multi_MainBig, 0);
-            Play_controls[Play_controlsQualityMulti].values = Play_Multi_MainBig ? STR_QUALITY_MULTI_BIG : STR_QUALITY_MULTI;
-            ClassicMulti_render();
+            ClassicMulti_setLayout(!Play_Multi_MainBig);
         }
     );
+    ClassicMulti_button(actions, 'quality', ClassicMulti_words('Качество окон: ', 'Window quality: ') + ClassicMulti_qualityLabel(), function () {
+        ClassicMulti.qualityOpen = true;
+        ClassicMulti.cursor = 'limit:' + (ClassicMulti.qualityLimit || 0);
+        ClassicMulti_render();
+    });
     ClassicMulti_button(actions, 'finish', ClassicMulti_words('Завершить мультистрим', 'End multistream'), function () {
         ClassicMulti_close();
         Play_controls[Play_MultiStream].enterKey();
@@ -216,6 +225,40 @@ function ClassicMulti_render() {
     body.appendChild(aside);
     var content = ClassicPages_el('div', 'classic-multi-content'),
         sources = ClassicPages_el('nav', 'classic-multi-sources');
+    if (ClassicMulti.qualityOpen) {
+        content.appendChild(ClassicPages_el('h2', '', ClassicMulti_words('Качество всех окон', 'Quality of all windows')));
+        content.appendChild(
+            ClassicPages_el(
+                'p',
+                'classic-multi-target',
+                ClassicMulti_words(
+                    'Максимальное качество выбирается отдельно от режима «картинка в картинке». Автоматический поток зависит от сети и возможностей телевизора.',
+                    'Independent of picture-in-picture limits. Automatic quality depends on the network and TV capabilities.'
+                )
+            )
+        );
+        [0, 1080, 720, 480].forEach(function (limit) {
+            var b = ClassicMulti_button(
+                content,
+                'limit:' + limit,
+                (limit ? limit + 'p' : ClassicMulti_words('Без ограничения', 'No ceiling')) + (limit === ClassicMulti.qualityLimit ? ' ✓' : ''),
+                function () {
+                    ClassicMulti.qualityLimit = limit;
+                    Main_setItem('classic_multi_quality', String(limit));
+                    ClassicMulti_applyQuality(true);
+                    ClassicMulti.qualityOpen = false;
+                    ClassicMulti.cursor = 'quality';
+                    ClassicMulti_render();
+                },
+                'classic-multi-quality-option'
+            );
+        });
+        body.appendChild(content);
+        panel.appendChild(body);
+        panel.appendChild(ClassicPages_el('footer', '', ClassicMulti_words('OK — выбрать · Назад — к трансляциям', 'OK — choose · Back — streams')));
+        ClassicMulti_focus();
+        return;
+    }
     ['followed', 'live'].forEach(function (source) {
         var button = ClassicMulti_button(
             sources,
@@ -321,7 +364,11 @@ function ClassicMulti_key(event) {
         ClassicMulti_open();
     } else if (event.keyCode === KEY_RETURN || event.keyCode === KEY_KEYBOARD_BACKSPACE) {
         if (!event.repeat) {
-            if (ClassicMulti.pending) {
+            if (ClassicMulti.qualityOpen) {
+                ClassicMulti.qualityOpen = false;
+                ClassicMulti.cursor = 'quality';
+                ClassicMulti_render();
+            } else if (ClassicMulti.pending) {
                 ClassicMulti_cancelPending();
                 ClassicMulti.cursor = 'slot:' + ClassicMulti.selected;
                 ClassicMulti_render();
@@ -411,6 +458,7 @@ function ClassicMulti_result(response, slot, id, failure) {
     Play_MultiArray[slot] = JSON.parse(JSON.stringify(Play_data_base));
     Play_MultiArray[slot].data = ScreensObj_LiveCellArray(request.stream);
     Play_MultiStartQualitySuccess(slot, result.url, result.responseText);
+    ClassicMulti_applyChat();
     ClassicMulti.selected = Play_MultiFirstClear();
     ClassicMulti.cursor = 'slot:' + ClassicMulti.selected;
     ClassicMulti_render();
@@ -435,6 +483,7 @@ function ClassicMulti_makeMain(slot) {
     Play_MultiUpdateMain();
     Play_controls[Play_controlsQualityMulti].values = STR_QUALITY_MULTI_BIG;
     ClassicMulti.selected = 0;
+    ClassicMulti_applyChat();
     ClassicMulti.cursor = 'slot:0';
     ClassicMulti_audio(0);
 }
@@ -461,6 +510,108 @@ function ClassicMulti_remove(slot) {
         return;
     }
     if (Play_audio_enable[slot]) ClassicMulti_audio(Play_MultiFirstAvailable());
+    ClassicMulti_applyChat();
     ClassicMulti.cursor = 'slot:' + slot;
     ClassicMulti_render();
+}
+
+// Multistream uses its own chat/quality choices; normal playback preferences are restored on exit.
+function ClassicMulti_prepare() {
+    ClassicMulti.entered = true;
+    ClassicMulti.chatChannel = null;
+    ClassicMulti.savedChatEnabled = Play_ChatEnable;
+    ClassicMulti.chatWanted = localStorage.getItem('classic_multi_chat') !== 'false';
+    ClassicMulti.qualityLimit = Number(localStorage.getItem('classic_multi_quality') || 0);
+    if ([0, 1080, 720, 480].indexOf(ClassicMulti.qualityLimit) === -1) ClassicMulti.qualityLimit = 0;
+    ClassicMulti.savedChat = {
+        width: Play_chat_container.style.width,
+        height: Play_chat_container.style.height,
+        top: Play_chat_container.style.top,
+        left: Play_chat_container.style.left
+    };
+    Play_StoreChatPos();
+    ClassicMulti_applyQuality(false);
+}
+function ClassicMulti_enter() {
+    ClassicMulti_applyChat();
+    ClassicMulti_open();
+}
+function ClassicMulti_leave() {
+    if (!ClassicMulti.entered) return;
+    ClassicMulti.entered = false;
+    ClassicMulti.qualityOpen = false;
+    Play_ChatEnable = ClassicMulti.savedChatEnabled;
+    Main_setItem('ChatEnable', Play_ChatEnable ? 'true' : 'false');
+    if (Play_isOn && Play_data.data.length && String(ChatLive_selectedChannel_id[0]) !== String(Play_data.data[14])) ChatLive_Init(0);
+    Settings_SetResBitRateMin();
+    if (ClassicMulti.savedChat)
+        Object.keys(ClassicMulti.savedChat).forEach(function (key) {
+            Play_chat_container.style[key] = ClassicMulti.savedChat[key];
+        });
+    var header = document.querySelector('#classic_chat_header0 .classic-chat-title');
+    if (header) header.textContent = ClassicShell_ru() ? 'Чат' : 'Chat';
+}
+function ClassicMulti_chatData() {
+    if (ClassicMulti.chatChannel) {
+        for (var i = 0; i < 4; i++)
+            if (Play_MultiArray[i].data.length && String(Play_MultiArray[i].data[14]) === String(ClassicMulti.chatChannel))
+                return Play_MultiArray[i].data;
+        ClassicMulti.chatChannel = null;
+    }
+    var slot = Play_MultiArray[0].data.length ? 0 : Play_MultiFirstAvailable();
+    return slot === null ? null : Play_MultiArray[slot].data;
+}
+function ClassicMulti_applyChat() {
+    if (!ClassicMulti.entered || !Play_MultiEnable) return;
+    var data = ClassicMulti_chatData();
+    if (!ClassicMulti.chatWanted || !data) {
+        Play_hideChat();
+        return;
+    }
+    if (String(ChatLive_selectedChannel_id[0]) !== String(data[14])) ChatLive_Init(0, false, data);
+    Play_chat_container.classList.remove('hide');
+    Play_controls[Play_controlsChat].setLabel();
+    var saved = ClassicMulti.savedChat || {};
+    Play_chat_container.style.width = Play_Multi_MainBig ? '32.8%' : saved.width || '25%';
+    Play_chat_container.style.height = Play_Multi_MainBig ? '65.8%' : saved.height || '48%';
+    Play_chat_container.style.top = Play_Multi_MainBig ? '0.2%' : saved.top || '0.2%';
+    Play_chat_container.style.left = Play_Multi_MainBig ? '67%' : saved.left || '74%';
+    var header = document.querySelector('#classic_chat_header0 .classic-chat-title');
+    if (header) {
+        header.textContent = (ClassicShell_ru() ? 'Чат · ' : 'Chat · ') + data[1];
+        header.title = data[1];
+    }
+}
+function ClassicMulti_toggleChat(enabled, channel) {
+    ClassicMulti.chatWanted = enabled;
+    if (channel !== undefined) ClassicMulti.chatChannel = channel;
+    Main_setItem('classic_multi_chat', enabled ? 'true' : 'false');
+    ClassicMulti_applyChat();
+    if (ClassicMulti.active) ClassicMulti_render();
+}
+function ClassicMulti_setLayout(big) {
+    if (ClassicMulti.pending) return;
+    if (big && !Play_MultiArray[0].data.length) {
+        ClassicMulti_makeMain(Play_MultiFirstAvailable());
+        return;
+    }
+    Play_Multi_MainBig = big;
+    OSInterface_EnableMultiStream(big, 0);
+    Play_controls[Play_controlsQualityMulti].values = big ? STR_QUALITY_MULTI_BIG : STR_QUALITY_MULTI;
+    ClassicMulti_applyChat();
+    if (ClassicMulti.active) ClassicMulti_render();
+}
+function ClassicMulti_applyQuality(restart) {
+    // The upstream "small player" defaults cap all four multistream windows at
+    // 720p / 3 Mbps. Use a separate multistream ceiling, unbounded by default.
+    OSInterface_SetSmallPlayerBitrate(0, ClassicMulti.qualityLimit || 0);
+    if (restart)
+        for (var i = 0; i < 4; i++)
+            if (Play_MultiArray[i].data.length && Play_MultiArray[i].AutoUrl && Play_MultiArray[i].playlist)
+                OSInterface_StartMultiStream(i, Play_MultiArray[i].AutoUrl, Play_MultiArray[i].playlist, true);
+}
+function ClassicMulti_qualityLabel() {
+    return ClassicMulti.qualityLimit
+        ? (ClassicShell_ru() ? 'До ' : 'Up to ') + ClassicMulti.qualityLimit + 'p'
+        : ClassicMulti_words('Без ограничения', 'No ceiling');
 }

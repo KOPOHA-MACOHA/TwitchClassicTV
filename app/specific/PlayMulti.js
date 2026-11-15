@@ -98,6 +98,7 @@ function Play_Multi_SetPanel() {
 
 function Play_Multi_UnSetPanelDiv(checkChat) {
     ClassicMulti_close();
+    ClassicMulti_leave();
     UserLiveFeed_SetFeedPicText();
     Main_ShowElement('stream_info');
     Main_HideElement('stream_info_multi');

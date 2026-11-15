@@ -181,3 +181,104 @@
     filter: none;
     text-shadow: none;
 }
+
+/* Fork update prompt: same typography and focus language as the settings. */
+#classic_update_prompt {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000a;
+    padding: 6vh 8vw;
+    box-sizing: border-box;
+    font-family: Inter, Arial, sans-serif;
+    color: #efeff1;
+}
+.classic-update-card {
+    width: 54vw;
+    max-height: 82vh;
+    overflow: hidden;
+    background: #18181b;
+    border: 1px solid #ffffff25;
+    border-radius: 1.4vh;
+    padding: 4vh 3vw;
+    box-sizing: border-box;
+    box-shadow: 0 2vh 8vh #0008;
+}
+.classic-update-brand {
+    color: #bf94ff;
+    font:
+        600 1.5vh/1.5 Inter,
+        Arial,
+        sans-serif;
+    letter-spacing: 0.06em;
+}
+.classic-update-card h1 {
+    font:
+        700 3.3vh/1.25 Inter,
+        Arial,
+        sans-serif;
+    margin: 1.2vh 0;
+}
+.classic-update-versions {
+    font-size: 2vh;
+    color: #adadb8;
+    margin: 1.2vh 0 2.4vh;
+}
+.classic-update-notes {
+    max-height: 23vh;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #c6c6ce;
+    font:
+        400 1.85vh/1.55 Inter,
+        Arial,
+        sans-serif;
+    margin-bottom: 2.5vh;
+}
+.classic-update-actions {
+    display: flex;
+    gap: 1vw;
+    margin-top: 3vh;
+}
+.classic-update-actions button {
+    border: 2px solid transparent;
+    border-radius: 0.7vh;
+    padding: 1.2vh 2vw;
+    font:
+        600 2vh/1.4 Inter,
+        Arial,
+        sans-serif;
+    color: #efeff1;
+    background: #ffffff10;
+    outline: none;
+    cursor: pointer;
+}
+.classic-update-actions .classic-update-primary {
+    background: #9146ff;
+}
+.classic-update-actions button.is-focused {
+    border-color: #efeff1;
+    box-shadow: 0 0 0 0.25vh #9146ff;
+}
+.classic-update-hint {
+    font-size: 1.8vh;
+    color: #adadb8;
+}
+.classic-update-spinner {
+    width: 3vh;
+    height: 3vh;
+    margin: 2vh 0;
+    border: 0.3vh solid #ffffff25;
+    border-top-color: #bf94ff;
+    border-radius: 50%;
+    animation: classic-update-spin 1s linear infinite;
+}
+@keyframes classic-update-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
