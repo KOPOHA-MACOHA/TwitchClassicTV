@@ -1,4 +1,4 @@
-# Twitch Classic 0.17
+# Twitch Classic 0.18
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -120,3 +120,7 @@ ClassicVodSync.js reads `video.self.viewingHistory` on ordinary VOD open and on 
 Reads have an independent 1.8-second watchdog and then fall back to local resume. Back cancels preflight immediately. The native bridge uses globally named callbacks. A returned video ID or HTTP 200 alone is not marked saved: the mutation must return matching server viewing history, or a separate read must confirm it. Account settings expose an opt-out and separate read/save outcomes.
 
 The current Twitch schema was checked anonymously: read an absent video and validate the write with `@skip(if:true)` (no account mutation). Real account authorisation, TV-to-mobile and mobile-to-TV synchronisation are not yet verified. This build is the first integration stage; live watch credit, streak credit and server-side raid participation are unchanged. See research/vod-sync.md for protocol evidence and device acceptance checks.
+
+## 0.18 VOD metadata ordering
+
+The initial 0.17 resume preflight could let the original metadata callback arrive while PlayVod_isOn was false. Start the metadata request in PlayVod_PosStart after the resume decision and active VOD state, preserving chapters and local history. Metadata callbacks also check the returned video ID so stale responses cannot change the next video's panel. The VOD integration test now delivers a complete metadata response (including chapter and history fields) instead of leaving that unrelated service silent. It asserts that metadata is requested only after preflight and that a stale video response is ignored.

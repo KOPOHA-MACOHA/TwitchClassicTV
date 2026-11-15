@@ -191,7 +191,6 @@ function PlayVod_StartPosition() {
 function PlayVod_SetStart() {
     PlayVod_muted_segments_value = null;
     PlayVod_previews_clear();
-    PlayVod_get_vod_info();
 
     Play_HasLive = false;
     Play_BottonIcons_End_Live_Img.src = IMG_404_VIDEO;
@@ -214,6 +213,9 @@ function PlayVod_PosStart() {
     PlayVod_IsJumping = false;
     Play_jumping = false;
     PlayVod_isOn = true;
+    // Fetch only after resume preflight: early responses used to be discarded
+    // while PlayVod_isOn was still false, losing chapters and local history.
+    PlayVod_get_vod_info();
 
     if (!Play_PreviewId) {
         if (!PlayVod_replay) PlayVod_loadData();
@@ -1460,7 +1462,7 @@ function PlayVod_get_vod_infoResult(responseObj) {
     if (PlayVod_isOn) {
         if (responseObj.status === 200) {
             var obj = JSON.parse(responseObj.responseText);
-            if (obj.data && obj.data.video) {
+            if (obj.data && obj.data.video && String(obj.data.video.id) === String(Main_values.ChannelVod_vodId)) {
                 if (obj.data.video.seekPreviewsURL) {
                     PlayVod_previews_pre_start(obj.data.video.seekPreviewsURL);
                 }

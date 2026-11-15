@@ -41,6 +41,7 @@ const {chromium} = require('playwright-core'),
             window.nativeClock = 0;
             window.nativePlaying = false;
             window.writeEcho = true;
+            window.metadataCalls = [];
             window.respond = (r, payload) =>
                 smartTwitchTV[r.callback](JSON.stringify({status: 200, responseText: JSON.stringify(payload)}), r.key, r.success, r.failure, r.check);
             window.Android = new Proxy(
@@ -70,6 +71,55 @@ const {chromium} = require('playwright-core'),
                                 try {
                                     parsed = JSON.parse(body);
                                 } catch {}
+                                if (success === 'PlayVod_get_vod_infoResult') {
+                                    const video = String(Main_values.ChannelVod_vodId);
+                                    metadataCalls.push({
+                                        video,
+                                        active: PlayVod_isOn,
+                                        waiting: !!(ClassicVodSync.session && ClassicVodSync.session.waiting)
+                                    });
+                                    const info = {
+                                        id: video,
+                                        title: 'Metadata title',
+                                        language: 'en',
+                                        duration: '2h0m0s',
+                                        createdAt: '2026-11-15T00:00:00Z',
+                                        viewCount: 100,
+                                        thumbnailURLs: ['https://fixture.test/thumb.jpg'],
+                                        game: {id: '1', displayName: 'Game'},
+                                        creator: {
+                                            id: '789',
+                                            login: 'fixture',
+                                            displayName: 'Fixture',
+                                            roles: {isPartner: false},
+                                            profileImageURL: ''
+                                        },
+                                        moments: {
+                                            edges: [
+                                                {
+                                                    node: {
+                                                        type: 'GAME_CHANGE',
+                                                        description: 'Game',
+                                                        details: {game: {id: '1', displayName: 'Game'}},
+                                                        positionMilliseconds: 0,
+                                                        durationMilliseconds: 7200000
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    };
+                                    return setTimeout(
+                                        () =>
+                                            smartTwitchTV[callback](
+                                                JSON.stringify({status: 200, responseText: JSON.stringify({data: {video: info}})}),
+                                                key,
+                                                success,
+                                                failure,
+                                                check
+                                            ),
+                                        0
+                                    );
+                                }
                                 if (!parsed || !/^ClassicVodSync/.test(parsed.operationName || '')) return;
                                 assertNativeCallback(success);
                                 assertNativeCallback(failure);
@@ -262,6 +312,17 @@ const {chromium} = require('playwright-core'),
         await page.waitForFunction(() => nativeStarts.length === 1);
         assert.equal(await page.evaluate(() => Number(nativeStarts[0][3])), 1200000, 'cloud resume reaches actual native StartAuto offset');
         assert.equal(await page.evaluate(() => ClassicVodSync.status.read), 'received');
+        await page.waitForFunction(() => Main_history_Exist('vod', '456') >= 0 && PlayVod_ChaptersArray.length === 1);
+        assert.ok(
+            await page.evaluate(() => metadataCalls.every(r => r.active && !r.waiting)),
+            'metadata loads after cloud preflight and is retained'
+        );
+        assert.equal(await page.evaluate(() => ChannelVod_title), 'Metadata title');
+        await page.evaluate(() =>
+            PlayVod_get_vod_infoResult({status: 200, responseText: JSON.stringify({data: {video: {id: '999', title: 'stale'}}})})
+        );
+        assert.equal(await page.evaluate(() => ChannelVod_title), 'Metadata title', 'stale metadata cannot overwrite the current video');
+
         await page.evaluate(() => {
             nativeClock = 1205;
             ClassicVodSync_poll();

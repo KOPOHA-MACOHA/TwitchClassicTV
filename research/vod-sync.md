@@ -1,4 +1,4 @@
-# Twitch account VOD resume — 0.17
+# Twitch account VOD resume — 0.18
 
 ## Protocol evidence
 
@@ -22,7 +22,7 @@ Schema references inspected: https://kawcco.com/twitch-graphql-api/updateuservie
 
 ## Automated coverage
 
-`tests/vod-sync-browser.cjs` boots the actual source app, uses Android's named callback dispatch, reads the resume position and reaches native StartAuto via token/playlist responses. It checks writes and readback, queued/backward/native seeks, pause/background, final flush, warm resume, explicit/zero/start-over positions, failed/silent/malformed responses, ignored late replies, Back during preflight, account isolation, opt-out and remote navigation. These responses are simulated.
+`tests/vod-sync-browser.cjs` boots the actual source app, uses Android's named callback dispatch, reads the resume position and reaches native StartAuto via token/playlist responses. It verifies retained full metadata, chapters and local history after resume preflight, ignores stale metadata, and checks writes and readback, queued/backward/native seeks, pause/background, final flush, warm resume, explicit/zero/start-over positions, failed/silent/malformed responses, ignored late replies, Back during preflight, account isolation, opt-out and remote navigation. These responses are simulated.
 
 ## Required real-device acceptance
 
