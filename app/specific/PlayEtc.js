@@ -1290,6 +1290,7 @@ function Play_PlayPauseChange(State, PlayVodClip) {
     //called by java
     if (Play_StayDialogVisible()) return;
 
+    if (PlayVodClip === 2) ClassicVodSync_pauseChanged(State);
     if (State) {
         ChatLive_Playing = true;
 
@@ -1313,7 +1314,6 @@ function Play_PlayPauseChange(State, PlayVodClip) {
         }
     } else {
         PlayChannelPoints_WasPlaying = false;
-        if (PlayVodClip === 2) ClassicVodSync_sample(true);
         if ((PlayVodClip > 1 && !Main_values.Play_ChatForceDisable) || !Main_IsOn_OSInterface) Chat_Pause();
 
         ChatLive_Playing = false;

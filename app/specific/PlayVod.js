@@ -139,7 +139,7 @@ function PlayVod_StartPosition() {
     if (!Play_PreviewId && !Play_OpenRewind) {
         Play_showBufferDialog();
         var isFromVod = true;
-        var ShowDialog = Settings_Obj_default('vod_dialog');
+        var ShowDialog = ClassicVodSync_resumeMode(Settings_Obj_default('vod_dialog'));
         PlayVod_VodOffset = 0;
 
         if (!PlayVod_replay && !Main_vodOffset && ShowDialog < 2) {

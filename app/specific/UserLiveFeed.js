@@ -752,6 +752,7 @@ function UserLiveFeed_CheckIfIsLiveStart(pos) {
         pos === UserLiveFeed_FeedPosX &&
         (!Play_isEndDialogVisible() || !Play_EndFocus) &&
         Settings_Obj_default('show_feed_player') &&
+        (UserLiveFeed_FeedPosX < UserLiveFeedobj_UserVodPos || Settings_Obj_default('show_vod_player')) &&
         UserLiveFeed_obj[UserLiveFeed_FeedPosX].checkPreview &&
         (!Play_MultiEnable || !Settings_Obj_default('disable_feed_player_multi')) &&
         UserLiveFeed_MaxInstances()
@@ -785,6 +786,7 @@ function UserLiveFeed_CheckIfIsLiveStart(pos) {
 }
 
 function UserLiveFeed_CheckIfIsLive(obj) {
+    if (UserLiveFeed_FeedPosX >= UserLiveFeedobj_UserVodPos && !Settings_Obj_default('show_vod_player')) return;
     Play_CheckIfIsLiveCleanEnd();
 
     if (!Main_IsOn_OSInterface || Main_isStopped || !UserLiveFeed_isPreviewShowing() || Main_isUpdateDialogVisible() || Main_isChangeDialogVisible())
@@ -810,6 +812,7 @@ var UserLiveFeed_CheckIfIsLiveResultThumb;
 var UserLiveFeed_PreviewOffset = 0;
 function UserLiveFeed_CheckIfIsLiveResult(StreamData, x, y) {
     //Called by Java
+    if (x >= UserLiveFeedobj_UserVodPos && !Settings_Obj_default('show_vod_player')) return;
 
     if (
         !Main_isStopped &&

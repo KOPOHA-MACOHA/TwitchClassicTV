@@ -8,12 +8,13 @@ var ClassicVodSync = {
     requests: {},
     writers: {},
     timer: null,
-    readTimeout: 1800,
+    readTimeout: 4000,
     requestTimeout: 6000,
     interval: 30000,
     status: {read: 'idle', write: 'idle', position: null, saved: 0}
 };
-var ClassicVodSync_readQuery = 'query ClassicVodSyncRead($id:ID!){video(id:$id){id self{viewingHistory{position updatedAt}}}}';
+var ClassicVodSync_readQuery =
+    'query ClassicVodSyncRead($id:ID!){video(id:$id){id self{viewingHistory{position updatedAt}}} currentUser{id viewedVideos(first:50){edges{history{position updatedAt}node{id}}}}}';
 var ClassicVodSync_writeQuery =
     'mutation ClassicVodSyncWrite($input:UpdateUserViewedVideoInput!){updateUserViewedVideo(input:$input){video{id self{viewingHistory{position updatedAt}}}}}';
 function ClassicVodSync_user() {
@@ -61,7 +62,7 @@ function ClassicVodSync_store(userId, videoId, record) {
 }
 function ClassicVodSync_request(user, body, timeout, done) {
     var id = ++ClassicVodSync.sequence;
-    var request = {user: user, done: done, timer: null};
+    var request = {user: user, done: done, timer: null, operation: body.operationName};
     ClassicVodSync.requests[id] = request;
     request.timer = window.setTimeout(function () {
         ClassicVodSync_finish(id, 'timeout');
@@ -72,7 +73,8 @@ function ClassicVodSync_request(user, body, timeout, done) {
             [
                 [clientIdHeader, AddCode_backup_client_id],
                 [Bearer_Header, Main_OAuth + user.token],
-                ['Content-Type', 'application/json']
+                ['Content-Type', 'application/json'],
+                ['Cache-Control', 'no-cache']
             ],
             ClassicVodSync_httpSuccess,
             ClassicVodSync_httpFailure,
@@ -99,7 +101,18 @@ function ClassicVodSync_httpSuccess(response, key, id) {
         else if (response.status !== 200) error = response.status ? 'server' : 'network';
         else if (result.errors && result.errors.length) {
             var messages = JSON.stringify(result.errors);
-            error = /unauth|forbidden|integrity|access.denied|invalid.*token/i.test(messages) ? 'auth' : 'unsupported';
+            var request = ClassicVodSync.requests[id],
+                partial = result.data;
+            // A restricted shelf must not discard an otherwise valid direct
+            // resume response. Mutations still require an error-free result.
+            if (
+                request.operation === 'ClassicVodSyncRead' &&
+                partial &&
+                ((partial.video && partial.video.self) ||
+                    (partial.currentUser && String(partial.currentUser.id) === request.user.id && partial.currentUser.viewedVideos))
+            )
+                data = partial;
+            else error = /unauth|forbidden|integrity|access.denied|invalid.*token/i.test(messages) ? 'auth' : 'unsupported';
         } else if (!result.data || typeof result.data !== 'object') error = 'malformed';
         else data = result.data;
     } catch (e) {
@@ -126,6 +139,37 @@ function ClassicVodSync_history(video, videoId) {
     if (!history || typeof history.position !== 'number' || !isFinite(history.position) || history.position < 0) return null;
     return {position: Math.floor(history.position), updatedAt: Date.parse(history.updatedAt) || 0};
 }
+function ClassicVodSync_remoteHistory(data, videoId, userId) {
+    var direct = ClassicVodSync_history(data.video, videoId);
+    var user = data.currentUser;
+    if (user && String(user.id) === userId && user.viewedVideos && Array.isArray(user.viewedVideos.edges)) {
+        user.viewedVideos.edges.forEach(function (edge) {
+            if (!edge || !edge.node || String(edge.node.id) !== videoId) return;
+            var record = ClassicVodSync_history({id: videoId, self: {viewingHistory: edge.history}}, videoId);
+            if (record && (!direct || record.updatedAt >= direct.updatedAt)) direct = record;
+        });
+    }
+    return direct;
+}
+function ClassicVodSync_saveStatus() {
+    var status = ClassicVodSync.status;
+    if (!status.user) return;
+    try {
+        Main_setItem('classic_vod_sync_status_' + status.user, JSON.stringify(status));
+    } catch (error) {
+        /* Optional diagnostics. */
+    }
+}
+function ClassicVodSync_lastStatus() {
+    var user = ClassicVodSync_user();
+    if (!user) return {read: 'signin', write: 'idle'};
+    if (ClassicVodSync.status.user === user.id) return ClassicVodSync.status;
+    try {
+        return JSON.parse(localStorage.getItem('classic_vod_sync_status_' + user.id)) || {read: 'idle', write: 'idle'};
+    } catch (error) {
+        return {read: 'idle', write: 'idle'};
+    }
+}
 function ClassicVodSync_current(session) {
     return (
         session &&
@@ -138,9 +182,14 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
     ClassicVodSync_stop(false);
     var user = ClassicVodSync_user(),
         video = String(Main_values.ChannelVod_vodId || '');
-    ClassicVodSync.status = {read: 'idle', write: 'idle', position: null, saved: 0};
+    var intent = ClassicVodSync.nextContinue;
+    ClassicVodSync.nextContinue = null;
+    var continuing = intent && user && intent.account === user.id && intent.video === video;
+    ClassicVodSync.status = {read: 'idle', write: 'idle', position: null, saved: 0, user: user && user.id, video: video};
     if (!ClassicFeatures_enabled('vod_sync') || !user || !/^\d+$/.test(video) || Play_OpenRewind) {
         ClassicVodSync.status.read = !ClassicFeatures_enabled('vod_sync') ? 'off' : !user ? 'signin' : Play_OpenRewind ? 'rewind' : 'invalid';
+        ClassicVodSync.status.readAt = Date.now();
+        ClassicVodSync_saveStatus();
         continueStart();
         return;
     }
@@ -165,6 +214,8 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
         promoting: !!Play_PreviewId,
         promotionSeek: false,
         explicitPosition: null,
+        forceContinue: !!continuing,
+        continueFallback: continuing ? intent.position : null,
         continueStart: continueStart
     };
     ClassicVodSync.session = s;
@@ -176,9 +227,13 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
     ClassicVodSync.timer = window.setInterval(ClassicVodSync_poll, 5000);
     // Explicit timestamps, native restoration and "start over" always win over cloud resume.
     if (fromStart) Main_vodOffset = 0.001;
-    if (fromStart || Main_vodOffset || PlayVod_replay || (!resume && Settings_Obj_default('vod_dialog') >= 2)) {
-        s.explicitPosition = Main_vodOffset || (!resume && Settings_Obj_default('vod_dialog') >= 2 ? 0.001 : null);
+    var startOnly = !resume && !s.forceContinue && Settings_Obj_default('vod_dialog') >= 2;
+    if (fromStart || Main_vodOffset || PlayVod_replay || startOnly) {
+        s.explicitPosition = Main_vodOffset || (startOnly ? 0.001 : null);
         ClassicVodSync.status.read = 'explicit';
+        ClassicVodSync.status.source = 'explicit';
+        ClassicVodSync.status.readAt = Date.now();
+        ClassicVodSync_saveStatus();
         continueStart();
         return;
     }
@@ -186,34 +241,106 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
     ClassicVodSync.status.read = 'reading';
     Main_PreventClick(false, Main_PreventClickfun);
     Play_showBufferDialog();
-    ClassicVodSync_request(
-        user,
-        {operationName: 'ClassicVodSyncRead', query: ClassicVodSync_readQuery, variables: {id: video}},
-        ClassicVodSync.readTimeout,
-        function (error, data) {
-            if (ClassicVodSync.session !== s || !s.waiting) return;
-            s.waiting = false;
-            if (!ClassicVodSync_current(s)) {
-                ClassicVodSync.status.read = 'cancelled';
-                ClassicVodSync_stop(false);
-                if (String(Main_values.ChannelVod_vodId) === video && !Main_isStopped) continueStart();
+    ClassicVodSync_readForSession(s, function (error, data) {
+        if (ClassicVodSync.session !== s || !s.waiting) return;
+        s.waiting = false;
+        if (!ClassicVodSync_current(s)) {
+            ClassicVodSync.status.read = 'cancelled';
+            ClassicVodSync_stop(false);
+            if (String(Main_values.ChannelVod_vodId) === video && !Main_isStopped) continueStart();
+            return;
+        }
+        var remote = !error && ClassicVodSync_remoteHistory(data, video, user.id);
+        ClassicVodSync.status.read = error || (remote ? 'received' : !data.video ? 'unavailable' : !data.video.self ? 'auth' : 'empty');
+        if (remote) {
+            // A fresh account response wins, including a deliberate backward seek on another device.
+            // Device clocks and unconfirmed local writes cannot reliably establish server ordering.
+            s.remote = remote.position;
+            ClassicVodSync.status.source = 'cloud';
+            ClassicVodSync.status.position = s.remote;
+        } else {
+            var cached = ClassicVodSync_cache(user.id)[video];
+            if (cached && typeof cached.position === 'number') {
+                s.remote = cached.position;
+                ClassicVodSync.status.source = 'local';
+            } else if (s.continueFallback !== null) {
+                s.remote = s.continueFallback;
+                ClassicVodSync.status.source = 'local';
+            }
+        }
+        ClassicVodSync.status.readAt = Date.now();
+        ClassicVodSync_saveStatus();
+        continueStart();
+    });
+}
+// Finish this device's already-sent updates before reading again. Waiting has
+// the same overall deadline as a read, and never blocks Back or the native UI.
+function ClassicVodSync_readForSession(session, done) {
+    var deadline = Date.now() + ClassicVodSync.readTimeout;
+    function begin() {
+        if (ClassicVodSync.session !== session) return;
+        if (!ClassicVodSync_allowed(session.user)) {
+            done('cancelled');
+            return;
+        }
+        var writer = ClassicVodSync.writers[session.user.id + ':' + session.video];
+        if (writer && writer.busy) {
+            if (Date.now() >= deadline) {
+                done('timeout');
                 return;
             }
-            var remote = !error && ClassicVodSync_history(data.video, video);
-            ClassicVodSync.status.read = error || (!data.video ? 'unavailable' : !data.video.self ? 'auth' : remote ? 'received' : 'empty');
-            if (remote) {
-                var local = ClassicVodSync_cache(user.id)[video];
-                // A newer local edit may be a deliberate backward seek. Never use max(position).
-                if (local && local.dirty && (!remote.updatedAt || local.updatedAt > remote.updatedAt)) s.remote = local.position;
-                else s.remote = remote.position;
-                ClassicVodSync.status.position = s.remote;
-            } else {
-                var cached = ClassicVodSync_cache(user.id)[video];
-                if (cached && typeof cached.position === 'number') s.remote = cached.position;
-            }
-            continueStart();
+            window.setTimeout(begin, 50);
+            return;
         }
-    );
+        ClassicVodSync_request(
+            session.user,
+            {operationName: 'ClassicVodSyncRead', query: ClassicVodSync_readQuery, variables: {id: session.video}},
+            Math.max(1, deadline - Date.now()),
+            done
+        );
+    }
+    begin();
+}
+function ClassicVodSync_pauseChanged(playing) {
+    var s = ClassicVodSync.session;
+    if (!ClassicVodSync_current(s) || !s.started) return;
+    if (!playing) {
+        ClassicVodSync_sample(true);
+        s.pausedAt = Date.now();
+        s.pausePosition = s.lastPosition;
+        return;
+    }
+    var paused = s.pausedAt;
+    s.pausedAt = 0;
+    if (!paused) return;
+    s.refreshing = true;
+    var revision = ++ClassicVodSync.sequence;
+    s.refreshRevision = revision;
+    ClassicVodSync.status.read = 'reading';
+    ClassicVodSync_readForSession(s, function (error, data) {
+        if (!ClassicVodSync_current(s) || s.refreshRevision !== revision) return;
+        s.refreshing = false;
+        var remote = !error && ClassicVodSync_remoteHistory(data, s.video, s.user.id);
+        ClassicVodSync.status.read = error || (remote ? 'received' : 'empty');
+        ClassicVodSync.status.readAt = Date.now();
+        if (remote) {
+            ClassicVodSync.status.source = 'cloud';
+            ClassicVodSync.status.position = remote.position;
+            if (!Main_isStopped && PlayVod_isOn && Math.abs(remote.position - (s.pausePosition || 0)) >= 1) {
+                var duration = Number(Play_DurationSeconds) || s.duration;
+                var position = duration > 0 ? Math.min(remote.position, Math.max(0, duration - 1)) : remote.position;
+                OSInterface_mseekTo(Math.max(1, position * 1000));
+                s.expected = position;
+                s.seen = false;
+                s.lastPosition = null;
+                s.latest = null;
+                s.lastSend = Date.now();
+                Chat_offset = position;
+                Chat_Init();
+            }
+        }
+        ClassicVodSync_saveStatus();
+    });
 }
 function ClassicVodSync_position(localPosition) {
     var s = ClassicVodSync.session;
@@ -221,6 +348,10 @@ function ClassicVodSync_position(localPosition) {
     var duration = Number(Play_DurationSeconds) || s.duration;
     // The native player uses a positive millisecond offset to distinguish start-over from restoration.
     return Math.max(0.001, duration > 0 ? Math.min(s.remote, Math.max(0, duration - 1)) : s.remote);
+}
+function ClassicVodSync_resumeMode(mode) {
+    var s = ClassicVodSync.session;
+    return ClassicVodSync_current(s) && s.forceContinue ? 0 : mode;
 }
 function ClassicVodSync_started(seconds) {
     var s = ClassicVodSync.session;
@@ -252,6 +383,11 @@ function ClassicVodSync_sample(force, suppliedPosition) {
         (Play_PreviewId && (!force || String(Play_PreviewId) !== s.video))
     )
         return;
+    if (s.refreshing) {
+        if (!force) return;
+        s.refreshing = false;
+        s.refreshRevision = ++ClassicVodSync.sequence;
+    }
     if (!force && (Main_isStopped || PlayVod_IsJumping || Play_jumping || Main_vodOffset)) return;
     var position;
     try {
@@ -338,7 +474,7 @@ function ClassicVodSync_send(writer) {
                 {operationName: 'ClassicVodSyncRead', query: ClassicVodSync_readQuery, variables: {id: writer.video}},
                 ClassicVodSync.requestTimeout,
                 function (readError, readData) {
-                    var stored = !readError && ClassicVodSync_history(readData.video, writer.video);
+                    var stored = !readError && ClassicVodSync_remoteHistory(readData, writer.video, writer.user.id);
                     ClassicVodSync_written(writer, record, readError || (!stored || stored.position !== record.position ? 'unconfirmed' : null));
                 }
             );
@@ -350,27 +486,41 @@ function ClassicVodSync_written(writer, record, error) {
     // An ambiguous timed-out mutation must not be followed by more writes that it could overtake.
     if (error === 'timeout' || error === 'auth' || error === 'unsupported' || error === 'cancelled') writer.blocked = true;
     if (error !== 'cancelled') {
-        ClassicVodSync.status.write = error || 'saved';
+        if (ClassicVodSync.status.user === writer.user.id && ClassicVodSync.status.video === writer.video) {
+            ClassicVodSync.status.write = error || 'saved';
+            ClassicVodSync.status.writeAt = Date.now();
+            ClassicVodSync_saveStatus();
+        }
         if (!error) {
-            ClassicVodSync.status.saved = Date.now();
+            if (ClassicVodSync.status.user === writer.user.id && ClassicVodSync.status.video === writer.video) {
+                ClassicVodSync.status.saved = Date.now();
+                ClassicVodSync.status.position = record.position;
+                ClassicVodSync_saveStatus();
+            }
             var cached = ClassicVodSync_cache(writer.user.id)[writer.video];
             if (cached && cached.revision === record.revision) {
                 cached.dirty = false;
                 ClassicVodSync_store(writer.user.id, writer.video, cached);
             }
             record.dirty = false;
+            if (typeof ClassicContinue_invalidate === 'function') {
+                ClassicContinue_invalidate();
+                if (FollowingClassic.active && Main_isScene1DocVisible() && !Main_isStopped) ClassicContinue_load(true);
+            }
         }
     }
     ClassicVodSync_send(writer);
 }
 function ClassicVodSync_stop(flush) {
     if (flush) ClassicVodSync_sample(true);
+    if (ClassicVodSync.session && ClassicVodSync.session.started && typeof ClassicContinue_invalidate === 'function') ClassicContinue_invalidate();
     window.clearInterval(ClassicVodSync.timer);
     ClassicVodSync.timer = null;
     if (ClassicVodSync.session) {
         if (ClassicVodSync.session.waiting) ClassicVodSync.status.read = 'cancelled';
         ClassicVodSync.session.waiting = false;
     }
+    ClassicVodSync_saveStatus();
     ClassicVodSync.session = null;
 }
 function ClassicVodSync_waitKey(event) {
@@ -451,13 +601,27 @@ function ClassicVodSync_menu() {
               server: 'Twitch server error',
               unconfirmed: 'Twitch has not confirmed the new position'
           };
-    var status = ClassicVodSync.status;
+    var status = ClassicVodSync_lastStatus();
     var summary =
         (ru ? 'Получение: ' : 'Read: ') +
         (words[status.read] || words.idle) +
         ' · ' +
         (ru ? 'Сохранение: ' : 'Write: ') +
         (words[status.write] || words.idle);
+    if (status.readAt) summary += ' · ' + (ru ? 'Чтение: ' : 'Read at: ') + new Date(status.readAt).toLocaleString();
+    if (status.position !== null && status.position !== undefined) summary += ' · ' + Play_timeS(status.position);
+    if (status.source)
+        summary +=
+            ' · ' +
+            (status.source === 'cloud'
+                ? 'Twitch'
+                : status.source === 'local'
+                  ? ru
+                      ? 'Локальная копия'
+                      : 'Local copy'
+                  : ru
+                    ? 'Явная позиция'
+                    : 'Explicit position');
     if (status.saved) summary += ' · ' + new Date(status.saved).toLocaleTimeString();
     ClassicShell_push(ru ? 'Синхронизация записей Twitch' : 'Twitch VOD synchronisation', summary, [
         ClassicShell_row(

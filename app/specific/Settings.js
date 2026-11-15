@@ -250,7 +250,7 @@ var Settings_value = {
     show_vod_player: {
         //Migrated to dialog
         values: ['no', 'yes'],
-        defaultValue: 2
+        defaultValue: 1
     },
     show_clip_player: {
         //Migrated to dialog
@@ -1126,6 +1126,12 @@ function Settings_SetDefaults() {
         Settings_value[key].defaultValue = Main_getItemInt(key, Settings_value[key].defaultValue);
         Settings_value[key].defaultValue -= 1;
         if (Settings_value[key].defaultValue > Settings_Obj_length(key)) Settings_value[key].defaultValue = 0;
+    }
+    // VOD previews are opt-in; leave the independent live-preview preference intact.
+    if (localStorage.getItem('classic_vod_previews_020') !== 'true') {
+        Settings_value.show_vod_player.defaultValue = 0;
+        Main_setItem('show_vod_player', 1);
+        Main_setItem('classic_vod_previews_020', 'true');
     }
 
     Settings_ExtraCodecs(false);

@@ -348,6 +348,11 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         });
         await page.route('https://gql.twitch.tv/gql', r => {
             const query = r.request().postData() || '';
+            if (query.includes('ClassicContinueWatching'))
+                return r.fulfill({
+                    contentType: 'application/json',
+                    body: JSON.stringify({data: {currentUser: {id: 'viewer1', viewedVideos: {edges: []}}}})
+                });
             if (query.includes('ChannelFollows')) {
                 channelPages++;
                 if (channelPages % 2 === 0) {
@@ -451,7 +456,7 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
             ClassicShell_focusNav();
         });
         await page.keyboard.press('Enter');
-        await page.waitForFunction(() => FollowingClassic.liveDone && FollowingClassic.channelsDone);
+        await page.waitForFunction(() => FollowingClassic.liveDone && FollowingClassic.channelsDone && !ClassicContinue.loading);
         assert.equal(await page.locator('#classic_following').count(), 0);
         assert.equal(await page.locator('.following-stream-card').count(), 1);
         assert.equal(await page.locator('.following-channel-card').count(), 1);
@@ -475,7 +480,9 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         await page.screenshot({path: 'tests/following-classic.png'});
         const playCount = await page.evaluate(() => window.openCalls || 0);
         await page.keyboard.down('Enter');
-        await page.waitForFunction(() => FollowingClassic.holdLong && FollowingClassic.liveDone && FollowingClassic.channelsDone);
+        await page.waitForFunction(
+            () => FollowingClassic.holdLong && FollowingClassic.liveDone && FollowingClassic.channelsDone && !ClassicContinue.loading
+        );
         await page.keyboard.up('Enter');
         assert.equal(livePages, 4);
         assert.equal(channelPages, 4);

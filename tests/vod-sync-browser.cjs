@@ -479,7 +479,7 @@ const {chromium} = require('playwright-core'),
         });
         await page.waitForFunction(() => nativeStarts.length === 2);
         assert.equal(await page.evaluate(() => Number(nativeStarts[1][3])), 80000);
-        // A newer unsent local edit is used without replaying an old queued write first.
+        // A fresh cloud position wins over an unconfirmed checkpoint, even with a skewed TV clock.
         await page.evaluate(() => {
             ClassicVodSync_store('123', '456', {position: 50, updatedAt: Date.now() + 10000, dirty: true, revision: ++ClassicVodSync.sequence});
             serverPosition = 200;
@@ -487,7 +487,91 @@ const {chromium} = require('playwright-core'),
             prepareVod();
         });
         await page.waitForFunction(() => nativeStarts.length === 1);
-        assert.equal(await page.evaluate(() => Number(nativeStarts[0][3])), 50000);
+        assert.equal(await page.evaluate(() => Number(nativeStarts[0][3])), 200000);
+        // Phone progress in the account shelf can be newer than video.self.viewingHistory.
+        await page.evaluate(() => {
+            ClassicVodSync_stop(false);
+            Main_values.ChannelVod_vodId = '456';
+            const remote = ClassicVodSync_remoteHistory(
+                {
+                    video: {id: '456', self: {viewingHistory: {position: 200, updatedAt: '2026-01-01T00:00:00Z'}}},
+                    currentUser: {
+                        id: '123',
+                        viewedVideos: {edges: [{node: {id: '456'}, history: {position: 900, updatedAt: '2026-01-02T00:00:00Z'}}]}
+                    }
+                },
+                '456',
+                '123'
+            );
+            if (remote.position !== 900) throw Error('Account continuation must be used');
+            serverPosition = 400;
+            serverUpdated = Date.now();
+            prepareVod('475');
+        });
+        await page.waitForFunction(() => nativeStarts.length === 1);
+        await page.evaluate(() => {
+            nativeClock = 405;
+            ClassicVodSync_poll();
+        });
+        await page.waitForFunction(() => ClassicVodSync.status.write === 'saved');
+        await page.evaluate(() => {
+            nativePlaying = false;
+            Play_PlayPauseChange(false, 2);
+        });
+        await page.waitForFunction(() => Object.keys(ClassicVodSync.requests).length === 0);
+        await page.evaluate(() => {
+            serverPosition = 900;
+            serverUpdated = Date.now();
+            ClassicVodSync.session.pausedAt = Date.now() - 1;
+            nativePlaying = true;
+            Play_PlayPauseChange(true, 2);
+        });
+        await page.waitForFunction(() => nativeClock === 900);
+        assert.equal(await page.evaluate(() => ClassicVodSync.status.source), 'cloud');
+        await page.evaluate(() => {
+            ClassicVodSync_stop(false);
+            ClassicVodSync.status = {read: 'idle', write: 'idle'};
+        });
+        assert.equal(await page.evaluate(() => ClassicVodSync_lastStatus().read), 'received', 'last read survives a JS/app restart');
+        assert.ok(await page.evaluate(() => ClassicVodSync_lastStatus().readAt > 0));
+        // An optional account-shelf error must not discard a valid direct resume record.
+        const partial = await page.evaluate(
+            () =>
+                new Promise(resolve => {
+                    ClassicVodSync_request(
+                        ClassicVodSync_user(),
+                        {operationName: 'ClassicVodSyncRead', variables: {id: '475'}},
+                        1000,
+                        (error, data) => resolve({error, position: data && data.video.self.viewingHistory.position})
+                    );
+                    const id = ClassicVodSync.sequence;
+                    ClassicVodSync_httpSuccess(
+                        {
+                            status: 200,
+                            responseText: JSON.stringify({
+                                errors: [{message: 'Shelf unavailable'}],
+                                data: {video: {id: '475', self: {viewingHistory: {position: 812, updatedAt: new Date().toISOString()}}}}
+                            })
+                        },
+                        0,
+                        id
+                    );
+                })
+        );
+        assert.equal(partial.error, null);
+        assert.equal(partial.position, 812);
+        // The account shelf's Continue action overrides the ordinary Start Over preference.
+        await page.evaluate(() => {
+            Settings_value.vod_dialog.defaultValue = 2;
+            ClassicVodSync.nextContinue = {account: '123', video: '480', position: 100};
+            serverPosition = 1900;
+            prepareVod('480');
+        });
+        await page.waitForFunction(() => nativeStarts.length === 1);
+        assert.equal(await page.evaluate(() => Number(nativeStarts[0][3])), 1900000);
+        await page.evaluate(() => {
+            Settings_value.vod_dialog.defaultValue = 0;
+        });
         // Explicit link timestamps win over remote history and make no resume read.
         const before = await page.evaluate(() => syncCalls.length);
         await page.evaluate(() => prepareVod('457', 600));

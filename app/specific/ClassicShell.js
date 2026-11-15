@@ -774,6 +774,7 @@ function ClassicShell_updateScale() {
 function ClassicShell_presentSetting(key, info) {
     var labels = ClassicShell_ru()
         ? {
+              show_vod_player: 'Автопросмотр записей в миниатюрах',
               chat_logging: 'Вход в чат от имени аккаунта',
               disabled_shared: 'Отключить общий чат',
               chat_line_animation: 'Плавная прокрутка',
@@ -801,6 +802,7 @@ function ClassicShell_presentSetting(key, info) {
               chat_show_badges_shared: 'Значки общего чата'
           }
         : {
+              show_vod_player: 'Autoplay VOD thumbnails',
               chat_logging: 'Join chat using your account',
               disabled_shared: 'Disable shared chat',
               chat_line_animation: 'Smooth scrolling',

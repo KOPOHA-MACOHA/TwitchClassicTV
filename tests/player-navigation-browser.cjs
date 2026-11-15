@@ -2,7 +2,12 @@ const {chromium} = require('playwright-core'),
     assert = require('assert/strict');
 const {PNG} = require('pngjs');
 (async () => {
-    const browser = await chromium.launch({executablePath: process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()), headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
+    const browser = await chromium.launch({
+        executablePath:
+            process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()),
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage']
+    });
     const page = await browser.newPage({viewport: {width: 1920, height: 1080}, locale: 'ru-RU'}),
         errors = [];
     page.on('pageerror', e => errors.push(String(e)));
@@ -377,6 +382,8 @@ const {PNG} = require('pngjs');
                 {width: 3840, height: 2160}
             ]) {
                 await page.setViewportSize(viewport);
+                // Chromium applies viewport resize asynchronously; measure the settled frame.
+                await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
                 const geometry = await page.evaluate(() => {
                     // Seek text must not push the track into the buttons.
                     document.getElementById('progress_bar_jump_to').textContent = '01:23:45 → 01:25:00';
@@ -396,7 +403,7 @@ const {PNG} = require('pngjs');
                     assert.ok(geometry.bar.bottom + viewport.height * 0.02 < b.top, JSON.stringify(geometry));
                     assert.ok(Math.abs(geometry.pause.top - b.top) < 2, JSON.stringify(geometry));
                 }
-                assert.ok(geometry.pause.right < geometry.controls[0].left);
+                assert.ok(geometry.pause.right < geometry.controls[0].left, JSON.stringify({mode, viewport, geometry}));
             }
             await page.setViewportSize({width: 1920, height: 1080});
         }

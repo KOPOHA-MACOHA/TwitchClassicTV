@@ -1,4 +1,4 @@
-# Twitch Classic 0.19
+# Twitch Classic 0.20
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -130,3 +130,13 @@ The initial 0.17 resume preflight could let the original metadata callback arriv
 A VOD selected while its thumbnail player was active previously bypassed ClassicVodSync_open because Play_PreviewId was truthy, incorrectly reporting Disabled. Promotion now starts an account session, reads the remote position, preserves the native preview player and playlist, and explicitly seeks it after FixViewPosition. The old thumbnail offset cannot overwrite the account or explicit position. A mismatched preview is cleared before a fresh load. No checkpoint is sent for passive browsing previews.
 
 When exiting, the upstream code can set Play_PreviewId before the final save. A forced final sample is now allowed for the same VOD while its viewing session is still active; periodic preview samples remain excluded. Statuses distinguish actual opt-out, missing login, live rewind, invalid video ID and an explicit starting position. Tests reproduce the previous Disabled result on native preview promotion and cover remote/empty/zero/explicit positions, mismatched preview clearing and demotion flush. The native model now reproduces Android StartAuto's preview-reuse branch instead of always assuming a new player start.
+
+## 0.20 account continuation and VOD preview behaviour
+
+Following includes five unfinished account VODs above live follows and offline channels. ClassicContinue.js fetches currentUser.viewedVideos independently, filters unavailable/completed entries, sorts by server update time, and caches per account. Cards show title/channel/progress/time remaining, open through the original VOD opener, and run fresh resume preflight instead of trusting a stale shelf offset. The explicit Continue action overrides the ordinary Start Over preference without disabling fresh account reads. Long OK opens a modern Resume / Hide on this TV / Cancel menu; live-card long OK still refreshes. Hiding is local and is lifted when that server entry changes. Account changes never reuse another account's cache. Following preserves pending focus while its three independent requests finish.
+
+Fresh server resume history now wins over unconfirmed local checkpoints and TV clock skew. The read compares video.self.viewingHistory with the matching account-shelf record. An optional shelf error does not discard a valid direct response. Reads wait for this device's in-flight position writes within a four-second total deadline. Unpausing on TV also checks the account again before sending more position updates, so viewing on a phone during the pause can move the TV forward or backward. A user edit/exit invalidates late pause-refresh results. Last read/write outcomes, time, position and source are persisted per account and remain visible after a restart.
+
+VOD thumbnail autoplay is disabled once on upgrading, and defaults off on new installations; it can be enabled under Appearance > Previews. Live autoplay retains its own preference. A paused VOD reused as a thumbnail is not automatically unpaused, even after opting in. Screen and in-player-feed auto-preview replies honour the VOD switch, including late responses.
+
+Both GraphQL query shapes were accepted by the current Twitch endpoint without an account (currentUser=null), which establishes schema validity only. Tests simulate authenticated replies; real account shelf access and phone-to-TV progress still need user verification. TV-to-Twitch saving was confirmed by the user on 0.19.

@@ -18,7 +18,12 @@ function ClassicFeatures_set(key, value) {
     Main_setItem('classic_feature_' + key, value ? 'true' : 'false');
     if (key === 'vod_sync') {
         if (!value) ClassicVodSync_stop(false);
+        var account = ClassicVodSync_user();
+        if (account && ClassicVodSync.status.user !== account.id) ClassicVodSync.status = ClassicVodSync_lastStatus();
+        if (account) ClassicVodSync.status.user = account.id;
         ClassicVodSync.status.read = value ? 'idle' : 'off';
+        ClassicVodSync.status.readAt = 0;
+        ClassicVodSync_saveStatus();
     }
     if (key === 'readable_nicks') ClassicChatPresentation_refreshNickColors();
     if (key === 'connected_chatters') {

@@ -108,11 +108,16 @@ function FollowingClassic_init() {
         Date.now() - FollowingClassic.updated > 60000
     )
         FollowingClassic_reload();
-    else FollowingClassic_render();
+    else {
+        ClassicContinue_load(false);
+        FollowingClassic_render();
+    }
     ClassicShell_syncNav();
 }
 function FollowingClassic_exit() {
     FollowingClassic.active = false;
+    ClassicContinue_closeMenu();
+    ClassicContinue_invalidate();
     FollowingClassic_cancelHold();
     FollowingClassic_stopPreview();
     Main_removeEventListener('keyup', FollowingClassic_keyUp);
@@ -127,6 +132,7 @@ function FollowingClassic_reload() {
         return;
     }
     FollowingClassic_stopPreview();
+    FollowingClassic.pendingFocus = FollowingClassic.focusKey;
     ClassicPages_cancel(FollowingClassic);
     FollowingClassic.account = AddUser_UsernameArray[0].id;
     FollowingClassic.updated = Date.now();
@@ -140,6 +146,7 @@ function FollowingClassic_reload() {
     FollowingClassic_render();
     FollowingClassic_livePage(null);
     FollowingClassic_channelPage(null);
+    ClassicContinue_load(true);
 }
 function FollowingClassic_livePage(cursor) {
     var url =
@@ -217,7 +224,7 @@ function FollowingClassic_channelPage(cursor) {
 function FollowingClassic_render() {
     var panel = document.getElementById('classic_following_page');
     if (!panel || !FollowingClassic.active) return;
-    var focused = FollowingClassic.focusKey,
+    var focused = FollowingClassic.pendingFocus || FollowingClassic.focusKey,
         ru = ClassicShell_ru();
     panel.replaceChildren();
     FollowingClassic.rows = [];
@@ -231,6 +238,7 @@ function FollowingClassic_render() {
     screen.status = true;
     screen.dataEnded = true;
     screen.SetPreviewEnable();
+    ClassicContinue_render(panel);
     var live = ClassicPages_el('section', 'following-section');
     live.appendChild(ClassicPages_el('h2', '', ru ? 'В эфире' : 'Live now'));
     var grid = ClassicPages_el('div', 'following-live-grid');
@@ -313,12 +321,12 @@ function FollowingClassic_render() {
         ru ? 'Нет каналов вне эфира' : 'No offline followed channels'
     );
     panel.appendChild(offline);
-    FollowingClassic.cursor = Math.max(
-        0,
-        FollowingClassic.rows.findIndex(function (row) {
-            return row.key === focused;
-        })
-    );
+    var restored = FollowingClassic.rows.findIndex(function (row) {
+        return row.key === focused;
+    });
+    if (restored >= 0 || (FollowingClassic.liveDone && FollowingClassic.channelsDone && !ClassicContinue.loading))
+        FollowingClassic.pendingFocus = null;
+    FollowingClassic.cursor = Math.max(0, restored);
     if (!ClassicShell_navActive && Main_isScene1DocVisible()) FollowingClassic_focus(false);
 }
 function FollowingClassic_status(section, done, error, count, empty) {
@@ -338,7 +346,7 @@ function FollowingClassic_focus(scroll) {
     });
     var row = FollowingClassic.rows[FollowingClassic.cursor];
     if (row) {
-        FollowingClassic.focusKey = row.key;
+        if (!FollowingClassic.pendingFocus) FollowingClassic.focusKey = row.key;
         row.node.focus({preventScroll: true});
         if (scroll) row.node.scrollIntoView({block: 'nearest'});
         FollowingClassic_preview(row);
@@ -348,6 +356,10 @@ function FollowingClassic_key(event) {
     event.preventDefault();
     var key = event.keyCode,
         row = FollowingClassic.rows[FollowingClassic.cursor];
+    if ([KEY_ENTER, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN].indexOf(key) !== -1) {
+        FollowingClassic.pendingFocus = null;
+        if (row) FollowingClassic.focusKey = row.key;
+    }
     if (key === KEY_RETURN || key === KEY_KEYBOARD_BACKSPACE) {
         ClassicShell_navIndex = 0;
         ClassicShell_focusNav();
@@ -361,7 +373,8 @@ function FollowingClassic_key(event) {
             FollowingClassic.holdTimer = window.setTimeout(function () {
                 if (!FollowingClassic.holdDown || !FollowingClassic.active || Main_isStopped || !Main_isScene1DocVisible()) return;
                 FollowingClassic.holdLong = true;
-                FollowingClassic_reload();
+                if (row && row.section === 'continue') ClassicContinue_context(row.item);
+                else FollowingClassic_reload();
             }, 650);
         }
         return;

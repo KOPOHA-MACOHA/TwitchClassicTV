@@ -1312,7 +1312,7 @@ function Screens_LoadPreviewRestore(key) {
     var img = Main_getElementById(ScreenObj[key].ids[1] + ScreenObj[key].posY + '_' + ScreenObj[key].posX);
     var Rect = ClassicPages_previewRect(img);
 
-    if (!ChatLive_Playing) {
+    if (!ChatLive_Playing && ScreenObj[key].screenType !== 1) {
         OSInterface_PlayPause(true);
     }
 
@@ -1330,6 +1330,7 @@ function Screens_LoadPreviewRestore(key) {
 }
 
 function Screens_LoadPreviewStart(key, obj) {
+    if (ScreenObj[key].screenType === 1 && !Settings_Obj_default('show_vod_player')) return;
     Play_CheckIfIsLiveCleanEnd();
 
     if (
@@ -1400,6 +1401,7 @@ function Screens_LoadPreviewStart(key, obj) {
 }
 
 function Screens_LoadPreviewResult(StreamData, x, y) {
+    if (ScreenObj[x].screenType === 1 && !Settings_Obj_default('show_vod_player')) return;
     if (
         !Main_isStopped &&
         Screens_IsInUse(x) &&
