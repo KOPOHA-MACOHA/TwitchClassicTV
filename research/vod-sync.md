@@ -1,4 +1,4 @@
-# Twitch account VOD resume — 0.18
+# Twitch account VOD resume — 0.19
 
 ## Protocol evidence
 
@@ -32,3 +32,9 @@ Schema references inspected: https://kawcco.com/twitch-graphql-api/updateuservie
 4. If Twitch rejects the current device-flow credential or an undocumented operation, preserve local playback and record which direction/status failed. No real-account access test has been run in the build environment.
 
 This does not implement or establish live watch streaks, yearly watch statistics, Drops or joinRaid. Those remain separate integration stages, dependent on real authenticated protocol verification.
+
+## 0.19 preview-path regression
+
+The user reported Read: Disabled / Write: Not attempted while watching a VOD with the option enabled. Source inspection found that the default native thumbnail-promotion path carried Play_PreviewId into ClassicVodSync_open, and was treated like passive preview viewing. A regression test with the native preview state reproduced exactly `off` before the fix. The main-player session must start on explicit VOD selection even when its underlying player already exists. Applying a cloud position requires a separate native seek after promotion; Android FixViewPosition alone does not apply StartAuto's ResumePosition.
+
+The test now models both native player creation and preview reuse, validates all resume precedence variants, and checks the forced last save when the player is marked as a preview immediately before shutdown. This fixes a confirmed local lifecycle bug. Authenticated interoperability with the user's official Twitch app still requires another device check.

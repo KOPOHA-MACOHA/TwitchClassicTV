@@ -34,12 +34,15 @@ const {chromium} = require('playwright-core'),
             Settings_AppLang = 'ru_RU';
             window.syncCalls = [];
             window.nativeStarts = [];
+            window.nativeFixes = [];
+            window.nativeSeeks = [];
             window.delayed = [];
             window.serverPosition = 1200;
             window.serverUpdated = Date.now();
             window.syncMode = 'ok';
             window.nativeClock = 0;
             window.nativePlaying = false;
+            window.nativePreview = false;
             window.writeEcho = true;
             window.metadataCalls = [];
             window.respond = (r, payload) =>
@@ -52,13 +55,30 @@ const {chromium} = require('playwright-core'),
                         if (name === 'gettime' || name === 'getsavedtime') return () => nativeClock * 1000;
                         if (name === 'StartAuto')
                             return (...args) => {
+                                if (nativePreview) {
+                                    nativeFixes.push([0, 2]);
+                                    nativePreview = false;
+                                    return;
+                                }
                                 nativeStarts.push(args);
                                 nativeClock = Number(args[3]) / 1000;
                                 nativePlaying = true;
                             };
+                        if (name === 'FixViewPosition')
+                            return (...args) => {
+                                nativeFixes.push(args);
+                                nativePreview = false;
+                            };
                         if (name === 'mseekTo')
                             return ms => {
+                                nativeSeeks.push(ms);
                                 nativeClock = ms / 1000;
+                            };
+                        if (name === 'ClearSidePanelPlayer')
+                            return () => {
+                                nativePreview = false;
+                                nativePlaying = false;
+                                nativeClock = 0;
                             };
                         if (name === 'stopVideo')
                             return () => {
@@ -236,7 +256,7 @@ const {chromium} = require('playwright-core'),
             Settings_value.show_live_player.defaultValue = 0;
             ClassicVodSync.readTimeout = 120;
             ClassicVodSync.requestTimeout = 180;
-            window.prepareVod = (video = '456', explicit = 0) => {
+            window.prepareVod = (video = '456', explicit = 0, preview = false) => {
                 ClassicVodSync_stop(false);
                 Main_PreventClick(false, Main_PreventClickfun);
                 Main_values.Main_Go = Main_Live;
@@ -301,8 +321,21 @@ const {chromium} = require('playwright-core'),
                 PlayClip_isOn = false;
                 Main_vodOffset = explicit;
                 nativePlaying = false;
+                nativePreview = false;
                 nativeClock = 0;
                 nativeStarts = [];
+                if (preview) {
+                    Play_PreviewId = preview === true ? video : String(preview);
+                    nativePreview = true;
+                    Play_PreviewOffset = 70;
+                    Play_PreviewURL = 'https://fixture.test/promoted.m3u8';
+                    Play_PreviewResponseText =
+                        '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=4000000,RESOLUTION=1920x1080,CODECS="avc1.64002a,mp4a.40.2"\nhttps://fixture.test/vod.m3u8\n';
+                    nativeClock = 70;
+                    nativePlaying = true;
+                }
+                nativeFixes = [];
+                nativeSeeks = [];
                 Main_showScene2Doc();
                 Main_PlayVodHandleKeyDown();
                 PlayVod_Start();
@@ -550,6 +583,66 @@ const {chromium} = require('playwright-core'),
         assert.equal(await page.evaluate(() => Number(nativeStarts[0][3])), 0);
         assert.equal(await page.evaluate(() => ClassicVodSync.session), null);
         assert.equal(await page.evaluate(() => localStorage.getItem('classic_vod_resume_999')), null);
+        // The default TV path promotes an already-playing thumbnail, rather than StartAuto.
+        await page.evaluate(() => {
+            syncMode = 'ok';
+            serverPosition = 1500;
+            serverUpdated = Date.now() + 5000;
+            prepareVod('470', 0, true);
+        });
+        await page.waitForFunction(() => nativeFixes.length === 1);
+        assert.equal(await page.evaluate(() => ClassicVodSync.status.read), 'received', 'thumbnail promotion must not report sync disabled');
+        assert.equal(await page.evaluate(() => nativeStarts.length), 0, 'reuse the native thumbnail player');
+        assert.equal(await page.evaluate(() => nativeClock), 1500, 'cloud position supersedes the thumbnail clock and offset');
+        assert.equal(await page.evaluate(() => Play_PreviewId), null);
+        await page.evaluate(() => {
+            nativeClock = 1505;
+            ClassicVodSync_poll();
+        });
+        await page.waitForFunction(() => ClassicVodSync.status.write === 'saved');
+        assert.equal(await page.evaluate(() => serverPosition), 1505);
+        // Going Back can mark the video as a thumbnail before the final shutdown flush.
+        await page.evaluate(() => {
+            nativeClock = 1510;
+            PlayVod_SetPreview();
+            ClassicVodSync_stop(true);
+        });
+        await page.waitForFunction(() => serverPosition === 1510);
+        // No cloud checkpoint keeps the already-running preview position; it still starts reporting.
+        await page.evaluate(() => {
+            serverPosition = null;
+            prepareVod('471', 0, true);
+        });
+        await page.waitForFunction(() => nativeFixes.length === 1);
+        assert.equal(await page.evaluate(() => ClassicVodSync.status.read), 'empty');
+        assert.equal(await page.evaluate(() => nativeClock), 70);
+        assert.equal(await page.evaluate(() => nativeSeeks.length), 0);
+        await page.evaluate(() => {
+            nativeClock = 75;
+            ClassicVodSync_poll();
+        });
+        await page.waitForFunction(() => ClassicVodSync.status.write === 'saved');
+        // Explicit timestamps, including the native one-millisecond zero sentinel, win over preview time.
+        const previewReads = await page.evaluate(() => syncCalls.length);
+        await page.evaluate(() => prepareVod('472', 300, true));
+        await page.waitForFunction(() => nativeFixes.length === 1);
+        assert.equal(await page.evaluate(() => nativeClock), 300);
+        assert.equal(await page.evaluate(() => syncCalls.length), previewReads);
+        assert.equal(await page.evaluate(() => ClassicVodSync.status.read), 'explicit');
+        await page.evaluate(() => {
+            serverPosition = 0;
+            prepareVod('473', 0, true);
+        });
+        await page.waitForFunction(() => nativeFixes.length === 1);
+        assert.equal(await page.evaluate(() => nativeClock), 0.001);
+        // A different thumbnail must be cleared before loading the selected VOD, never reported as its viewing.
+        await page.evaluate(() => {
+            serverPosition = 600;
+            prepareVod('474', 0, '999999');
+        });
+        await page.waitForFunction(() => nativeStarts.length === 1);
+        assert.equal(await page.evaluate(() => nativeClock), 600);
+        assert.equal(await page.evaluate(() => nativeFixes.length), 0);
         // Settings are remote-accessible, opt-out works, storage never contains an OAuth credential.
         await page.evaluate(() => {
             ClassicVodSync_stop(false);
@@ -590,7 +683,7 @@ const {chromium} = require('playwright-core'),
         );
         assert.deepEqual(errors, []);
         console.log(
-            'PASS: actual VOD startup and native callback dispatch, cloud read/write/readback, backward seeks, serialised final edits, pause/background, timeout fallback and late replies, zero/explicit positions, account isolation, opt-out and remote settings'
+            'PASS: actual VOD startup and native callback dispatch, cloud read/write/readback, native preview promotion and final demotion flush, backward seeks, serialised final edits, pause/background, timeout fallback and late replies, zero/explicit positions, account isolation, opt-out and remote settings'
         );
     } catch (e) {
         console.error(

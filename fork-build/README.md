@@ -1,4 +1,4 @@
-# Twitch Classic 0.18
+# Twitch Classic 0.19
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -124,3 +124,9 @@ The current Twitch schema was checked anonymously: read an absent video and vali
 ## 0.18 VOD metadata ordering
 
 The initial 0.17 resume preflight could let the original metadata callback arrive while PlayVod_isOn was false. Start the metadata request in PlayVod_PosStart after the resume decision and active VOD state, preserving chapters and local history. Metadata callbacks also check the returned video ID so stale responses cannot change the next video's panel. The VOD integration test now delivers a complete metadata response (including chapter and history fields) instead of leaving that unrelated service silent. It asserts that metadata is requested only after preflight and that a stale video response is ignored.
+
+## 0.19 VOD thumbnail promotion
+
+A VOD selected while its thumbnail player was active previously bypassed ClassicVodSync_open because Play_PreviewId was truthy, incorrectly reporting Disabled. Promotion now starts an account session, reads the remote position, preserves the native preview player and playlist, and explicitly seeks it after FixViewPosition. The old thumbnail offset cannot overwrite the account or explicit position. A mismatched preview is cleared before a fresh load. No checkpoint is sent for passive browsing previews.
+
+When exiting, the upstream code can set Play_PreviewId before the final save. A forced final sample is now allowed for the same VOD while its viewing session is still active; periodic preview samples remain excluded. Statuses distinguish actual opt-out, missing login, live rewind, invalid video ID and an explicit starting position. Tests reproduce the previous Disabled result on native preview promotion and cover remote/empty/zero/explicit positions, mismatched preview clearing and demotion flush. The native model now reproduces Android StartAuto's preview-reuse branch instead of always assuming a new player start.

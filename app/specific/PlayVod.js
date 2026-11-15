@@ -227,7 +227,9 @@ function PlayVod_PosStart() {
         PlayVod_playlist = Play_PreviewResponseText;
         Play_SkipStartAuto = true;
 
-        if (Play_PreviewOffset) Main_vodOffset = Play_PreviewOffset;
+        var accountPosition = ClassicVodSync_previewPosition();
+        if (accountPosition !== null) Main_vodOffset = accountPosition;
+        else if (Play_PreviewOffset) Main_vodOffset = Play_PreviewOffset;
         PlayVod_onPlayer();
 
         if (!Play_PreviewOffset && !Play_OpenRewind) {
@@ -504,6 +506,7 @@ function PlayVod_onPlayerStartPlay(time) {
     if (Main_IsOn_OSInterface && PlayVod_isOn) {
         if (Play_SkipStartAuto) {
             OSInterface_FixViewPosition(0, 2);
+            ClassicVodSync_seekPromoted(time);
         } else {
             OSInterface_StartAuto(PlayVod_autoUrl, PlayVod_playlist, 2, PlayVod_replay ? -1 : time, 0);
         }

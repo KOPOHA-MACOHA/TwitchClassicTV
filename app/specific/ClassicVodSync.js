@@ -139,10 +139,16 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
     var user = ClassicVodSync_user(),
         video = String(Main_values.ChannelVod_vodId || '');
     ClassicVodSync.status = {read: 'idle', write: 'idle', position: null, saved: 0};
-    if (!ClassicFeatures_enabled('vod_sync') || !user || !/^\d+$/.test(video) || Play_PreviewId || Play_OpenRewind) {
-        ClassicVodSync.status.read = !user ? 'signin' : 'off';
+    if (!ClassicFeatures_enabled('vod_sync') || !user || !/^\d+$/.test(video) || Play_OpenRewind) {
+        ClassicVodSync.status.read = !ClassicFeatures_enabled('vod_sync') ? 'off' : !user ? 'signin' : Play_OpenRewind ? 'rewind' : 'invalid';
         continueStart();
         return;
+    }
+    // A selected VOD can already be playing as a thumbnail. Its promotion is
+    // actual viewing, and must not bypass account resume or subsequent writes.
+    if (Play_PreviewId && String(Play_PreviewId) !== video) {
+        if (Main_IsOn_OSInterface) OSInterface_ClearSidePanelPlayer();
+        Play_CheckIfIsLiveCleanEnd();
     }
     var s = {
         user: user,
@@ -156,6 +162,9 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
         lastPosition: null,
         lastSend: 0,
         firstSave: false,
+        promoting: !!Play_PreviewId,
+        promotionSeek: false,
+        explicitPosition: null,
         continueStart: continueStart
     };
     ClassicVodSync.session = s;
@@ -168,6 +177,8 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
     // Explicit timestamps, native restoration and "start over" always win over cloud resume.
     if (fromStart) Main_vodOffset = 0.001;
     if (fromStart || Main_vodOffset || PlayVod_replay || (!resume && Settings_Obj_default('vod_dialog') >= 2)) {
+        s.explicitPosition = Main_vodOffset || (!resume && Settings_Obj_default('vod_dialog') >= 2 ? 0.001 : null);
+        ClassicVodSync.status.read = 'explicit';
         continueStart();
         return;
     }
@@ -217,9 +228,30 @@ function ClassicVodSync_started(seconds) {
     s.started = true;
     s.expected = Math.max(0, Number(seconds) || 0);
 }
+function ClassicVodSync_previewPosition() {
+    var s = ClassicVodSync.session;
+    if (!ClassicVodSync_current(s) || !s.promoting) return null;
+    var position = s.explicitPosition !== null ? s.explicitPosition : s.remote !== null ? ClassicVodSync_position(0) : null;
+    s.promotionSeek = position !== null;
+    return position;
+}
+function ClassicVodSync_seekPromoted(milliseconds) {
+    var s = ClassicVodSync.session;
+    if (ClassicVodSync_current(s) && s.promoting && s.promotionSeek) {
+        OSInterface_mseekTo(milliseconds);
+        s.promotionSeek = false;
+    }
+}
 function ClassicVodSync_sample(force, suppliedPosition) {
     var s = ClassicVodSync.session;
-    if (!ClassicVodSync_current(s) || !s.started || !PlayVod_isOn || PlayClip_isOn || Play_PreviewId) return;
+    if (
+        !ClassicVodSync_current(s) ||
+        !s.started ||
+        !PlayVod_isOn ||
+        PlayClip_isOn ||
+        (Play_PreviewId && (!force || String(Play_PreviewId) !== s.video))
+    )
+        return;
     if (!force && (Main_isStopped || PlayVod_IsJumping || Play_jumping || Main_vodOffset)) return;
     var position;
     try {
@@ -377,7 +409,10 @@ function ClassicVodSync_menu() {
     var words = ru
         ? {
               idle: 'Ещё не выполнялось',
-              off: 'Выключено',
+              off: 'Выключено настройкой',
+              explicit: 'Задана начальная позиция',
+              rewind: 'Перемотка прямого эфира',
+              invalid: 'Не удалось определить запись',
               signin: 'Требуется вход в Twitch',
               reading: 'Ожидание Twitch',
               cancelled: 'Операция отменена',
@@ -396,7 +431,10 @@ function ClassicVodSync_menu() {
           }
         : {
               idle: 'Not attempted yet',
-              off: 'Disabled',
+              off: 'Disabled in settings',
+              explicit: 'Explicit start position',
+              rewind: 'Live rewind',
+              invalid: 'Cannot identify the video',
               signin: 'Sign in to Twitch',
               reading: 'Reading position',
               cancelled: 'Cancelled',
