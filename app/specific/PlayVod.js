@@ -51,7 +51,7 @@ var PlayVod_VodGameID;
 var PlayVod_ChaptersArray = [];
 //Variable initialization end
 
-function PlayVod_Start() {
+function PlayVod_Start(fromStart) {
     //Main_Log('PlayVod_Start');
 
     Play_HideEndDialog();
@@ -132,6 +132,10 @@ function PlayVod_Start() {
 
     PlayVod_SetStart();
 
+    ClassicVodSync_open(PlayVod_StartPosition, fromStart);
+}
+
+function PlayVod_StartPosition() {
     if (!Play_PreviewId && !Play_OpenRewind) {
         Play_showBufferDialog();
         var isFromVod = true;
@@ -159,6 +163,7 @@ function PlayVod_Start() {
                 }
             }
 
+            PlayVod_VodOffset = ClassicVodSync_position(PlayVod_VodOffset);
             if (!ShowDialog && PlayVod_VodOffset) {
                 Main_vodOffset = PlayVod_VodOffset;
                 PlayClip_OpenAVodOffset = Main_vodOffset;
@@ -269,8 +274,16 @@ function PlayVod_Resume() {
         Main_vodOffset = PlayVod_ResumeTime;
     }
 
-    PlayVod_ResumeTime = Main_vodOffset;
+    var localPosition = Main_vodOffset;
+    Main_vodOffset = 0;
+    ClassicVodSync_open(function () {
+        Main_vodOffset = ClassicVodSync_position(localPosition);
+        PlayVod_ResumeTime = Main_vodOffset;
+        PlayVod_ResumeStart();
+    }, false, true);
+}
 
+function PlayVod_ResumeStart() {
     if (navigator.onLine) PlayVod_ResumeAfterOnline();
     else Play_ResumeAfterOnlineId = Main_setInterval(PlayVod_ResumeAfterOnline, 100, Play_ResumeAfterOnlineId);
 
@@ -484,6 +497,7 @@ function PlayVod_onPlayer() {
 
 function PlayVod_onPlayerStartPlay(time) {
     time = Play_OpenRewind ? 0 : time; //at 0 if this is a vod that has not ended the player will auto start at the end
+    ClassicVodSync_started(time / 1000);
 
     if (Main_IsOn_OSInterface && PlayVod_isOn) {
         if (Play_SkipStartAuto) {
@@ -512,6 +526,7 @@ function PlayVod_shutdownStream(SkipSaveOffset) {
 }
 
 function PlayVod_PreshutdownStream(saveOffset) {
+    ClassicVodSync_stop(saveOffset);
     PlayVod_UpdateHistory(Main_values.Main_Go, saveOffset);
 
     if (Main_IsOn_OSInterface && !Play_PreviewId) {
@@ -806,6 +821,7 @@ function PlayVod_jump() {
 
         if (Main_IsOn_OSInterface) {
             OSInterface_mseekTo(PlayVod_TimeToJump > 0 ? PlayVod_TimeToJump * 1000 : 0);
+            ClassicVodSync_sample(true, Math.max(0, PlayVod_TimeToJump));
         } else if (PlayClip_isOn) {
             clip_player.currentTime = PlayVod_TimeToJump;
             Chat_fakeClock = PlayVod_TimeToJump;
@@ -978,7 +994,7 @@ function PlayVod_DialogPressed(fromStart) {
                 //Don't start the vod at zero zero to avoid playback issue
                 Main_history_UpdateVodClip(Main_values.ChannelVod_vodId, 0.001, 'vod');
                 Main_vodOffset = 0;
-                PlayVod_Start();
+                PlayVod_Start(true);
             } else {
                 PlayVod_DialogPressedClick(0);
             }

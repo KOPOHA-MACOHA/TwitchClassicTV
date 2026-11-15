@@ -1313,6 +1313,7 @@ function Play_PlayPauseChange(State, PlayVodClip) {
         }
     } else {
         PlayChannelPoints_WasPlaying = false;
+        if (PlayVodClip === 2) ClassicVodSync_sample(true);
         if ((PlayVodClip > 1 && !Main_values.Play_ChatForceDisable) || !Main_IsOn_OSInterface) Chat_Pause();
 
         ChatLive_Playing = false;

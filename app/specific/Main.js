@@ -2989,6 +2989,7 @@ var Main_isStopped = false;
 
 function Main_CheckStop() {
     // Called only by JAVA
+    ClassicVodSync_background();
     Main_isStopped = true;
     PlayChannelPoints_WasPlaying = false;
     Main_PreventClick(true, Main_PreventClickfun);

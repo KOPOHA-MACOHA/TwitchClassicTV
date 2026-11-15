@@ -22,6 +22,7 @@ const root = require('path').resolve(__dirname, '..');
             'shell',
             'native-auth',
             'startup',
+            'vod-sync',
             'features',
             'emote-layout',
             'chat-presentation',

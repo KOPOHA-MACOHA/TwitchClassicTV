@@ -355,6 +355,12 @@ function ClassicShell_rootSettings() {
                     ['backup_sync'],
                     [
                         ClassicShell_row(
+                            ClassicShell_ru() ? 'Синхронизация записей Twitch' : 'Twitch VOD synchronisation',
+                            ClassicShell_ru() ? 'Продолжение просмотра между ТВ и приложением Twitch' : 'Resume watching between TV and Twitch',
+                            ClassicVodSync_menu,
+                            'history'
+                        ),
+                        ClassicShell_row(
                             ClassicShell_ru() ? 'Просмотр, баллы и рейды' : 'Watch time, points and raids',
                             '',
                             function () {

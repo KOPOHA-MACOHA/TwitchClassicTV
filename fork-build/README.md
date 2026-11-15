@@ -1,4 +1,4 @@
-# Twitch Classic 0.16
+# Twitch Classic 0.17
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -112,3 +112,11 @@ The regression fixture now models decoder rejection through the real smartTwitch
 ## 0.16 branding and UI review
 
 Uses the official extruded Twitch wordmark and Glitch vectors from the public brand package, bundled offline. Android app_icon previously pointed at the widescreen banner; it now points at the padded square icon. Adaptive foreground and splash are separate resources, and render-branding.cjs also refreshes Gradle resource variants. Primary decoration is #9146FF; readable light text highlights remain #BF94FF. Russian count labels now handle 1/2/5 and 11–14 correctly, using nonbreaking thousands separators. Settings display the installed version and describe account backup more precisely. See docs/UI-REVIEW.md for checked surfaces, remaining suggestions and physical-device limits.
+
+## 0.17 account VOD resume
+
+ClassicVodSync.js reads `video.self.viewingHistory` on ordinary VOD open and on native warm resume. It writes `updateUserViewedVideo` every 30 seconds of changing position, plus explicit seek, pause, Home/background and exit. Five-second local checkpoints are per account and bounded to 200 videos. Newer unsent local changes are compared with the server timestamp; backward seeks and explicit start-over are preserved. All writes for a given account/video are serialised, including a final queued edit after closing. Timed-out mutations block further writes for that video until a deliberate reopen; no unbounded retry loop is used. Late reads cannot seek an already started player. A valid remote zero is translated to the native player's 1ms start-over sentinel.
+
+Reads have an independent 1.8-second watchdog and then fall back to local resume. Back cancels preflight immediately. The native bridge uses globally named callbacks. A returned video ID or HTTP 200 alone is not marked saved: the mutation must return matching server viewing history, or a separate read must confirm it. Account settings expose an opt-out and separate read/save outcomes.
+
+The current Twitch schema was checked anonymously: read an absent video and validate the write with `@skip(if:true)` (no account mutation). Real account authorisation, TV-to-mobile and mobile-to-TV synchronisation are not yet verified. This build is the first integration stage; live watch credit, streak credit and server-side raid participation are unchanged. See research/vod-sync.md for protocol evidence and device acceptance checks.

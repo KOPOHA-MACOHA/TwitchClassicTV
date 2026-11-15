@@ -1,5 +1,6 @@
 /* Twitch Classic feature preferences. GPL-3.0-or-later. */
 var ClassicFeatures_defaults = {
+    vod_sync: true,
     watch_time_points: true,
     auto_claim_bonus: true,
     raid_switch: true,
@@ -15,6 +16,7 @@ function ClassicFeatures_enabled(key) {
 }
 function ClassicFeatures_set(key, value) {
     Main_setItem('classic_feature_' + key, value ? 'true' : 'false');
+    if (key === 'vod_sync' && !value) ClassicVodSync_stop(false);
     if (key === 'readable_nicks') ClassicChatPresentation_refreshNickColors();
     if (key === 'connected_chatters') {
         [0, 1].forEach(ClassicChatPresentation_refreshCount);
