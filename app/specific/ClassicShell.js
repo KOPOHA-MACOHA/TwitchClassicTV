@@ -31,7 +31,7 @@ function ClassicShell_words() {
               language: 'Язык и контент',
               alerts: 'Уведомления',
               advanced: 'Дополнительно',
-              accountHint: 'Вход, история и синхронизация',
+              accountHint: 'Вход, аккаунты и резервная копия',
               videoHint: 'Качество по умолчанию, перемотка и поведение плеера',
               chatHint: '7TV, BTTV, FFZ, сообщения и оформление',
               appearanceHint: 'Анимации, размер интерфейса и превью',
@@ -62,7 +62,7 @@ function ClassicShell_words() {
               language: 'Language and content',
               alerts: 'Notifications',
               advanced: 'Advanced',
-              accountHint: 'Sign in, history and sync',
+              accountHint: 'Sign in, accounts and backup',
               videoHint: 'Default quality, seeking and player behavior',
               chatHint: '7TV, BTTV, FFZ, messages and appearance',
               appearanceHint: 'Animations, interface size and previews',
@@ -126,12 +126,11 @@ function ClassicShell_init() {
     var brand = document.createElement('span');
     brand.className = 'classic-brand';
     var brandIcon = document.createElement('img');
-    brandIcon.src = 'branding/twitch-glitch.svg';
-    brandIcon.alt = '';
+    brandIcon.src = 'branding/twitch-wordmark.svg';
+    brandIcon.alt = 'Twitch';
+    brandIcon.width = 1140;
+    brandIcon.height = 380;
     brand.appendChild(brandIcon);
-    var brandName = document.createElement('span');
-    brandName.textContent = 'twitch';
-    brand.appendChild(brandName);
     bar.appendChild(brand);
     ClassicShell_navItems.forEach(function (item, index) {
         var button = document.createElement('button');
@@ -488,7 +487,7 @@ function ClassicShell_renderSettings(title, summary, rows, selected) {
     var w = ClassicShell_words();
     ClassicShell_rows = rows;
     ClassicShell_cursor = selected || 0;
-    ClassicShell_settings.querySelector('.classic-settings-eyebrow').textContent = 'TWITCH CLASSIC';
+    ClassicShell_settings.querySelector('.classic-settings-eyebrow').textContent = 'TWITCH CLASSIC · ' + ClassicBuild.name;
     ClassicShell_settings.querySelector('h1').textContent = title;
     ClassicShell_settings.querySelector('header p').textContent = summary;
     ClassicShell_settings.querySelector('footer').textContent = w.hint;

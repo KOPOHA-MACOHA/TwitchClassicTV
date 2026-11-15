@@ -924,14 +924,22 @@ function Main_isControlsDialogVisible() {
 
 function Main_formatNumber(value) {
     if (!value) return value;
-    return (value + '').replace(/\B(?=(\d{3})+(?!\d))/g, STR_NUMBER_SEPARATOR);
+    var separator = /^ru/i.test(Settings_AppLang) ? '\u00a0' : STR_NUMBER_SEPARATOR;
+    return (value + '').replace(/\B(?=(\d{3})+(?!\d))/g, separator);
+}
+
+function Main_ruCount(value, one, few, many) {
+    var count = Math.abs(Number(value)), last = count % 10, lastTwo = count % 100;
+    return lastTwo >= 11 && lastTwo <= 14 ? many : last === 1 ? one : last >= 2 && last <= 4 ? few : many;
 }
 
 function Main_GetViewerStrings(value) {
+    if (/^ru/i.test(Settings_AppLang)) return Main_ruCount(value, 'зритель', 'зрителя', 'зрителей');
     return value === 1 ? STR_VIEWER : STR_VIEWERS;
 }
 
 function Main_GetViewsStrings(value) {
+    if (/^ru/i.test(Settings_AppLang)) return ' ' + Main_ruCount(value, 'просмотр', 'просмотра', 'просмотров');
     return value === 1 ? STR_VIEW : STR_VIEWS;
 }
 

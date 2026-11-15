@@ -37,7 +37,7 @@
 .following-stream-card.is-focused,
 .following-channel-card.is-focused {
     outline: none;
-    border-color: #a970ff;
+    border-color: #9146ff;
     background: #1f1f23;
 }
 .following-card-frame {
@@ -143,7 +143,7 @@
         Arial;
 }
 .following-retry:focus {
-    border-color: #a970ff;
+    border-color: #9146ff;
     outline: none;
 }
 .classic-shell #stream_table_channel_content {
@@ -216,7 +216,7 @@
     outline: none;
     background: #26262c;
     color: #efeff1;
-    border-bottom-color: #a970ff;
+    border-bottom-color: #9146ff;
 }
 .classic-channel-hero {
     padding: 4vh 0;
@@ -245,7 +245,7 @@
 }
 .classic-channel-watch:focus {
     outline: 0;
-    border-color: #a970ff;
+    border-color: #9146ff;
 }
 .classic-channel-live-thumb {
     width: 47vw;
@@ -337,7 +337,7 @@
     color: #adadb8;
 }
 .classic-shell .classic-filter-tabs .stream_switch_focused {
-    border-color: #a970ff !important;
+    border-color: #9146ff !important;
     background: #29292e;
 }
 .classic-shell #screens_holder .animate_height_transition,
@@ -369,7 +369,7 @@
     content: none !important;
 }
 .classic-shell #screens_holder .classic-video-card .stream_thumbnail_focused .stream_thumbnail_live_img {
-    border-color: #a970ff;
+    border-color: #9146ff;
     outline: none;
 }
 .classic-thumbnail-placeholder {
@@ -503,6 +503,6 @@
     height: calc(100% - 18.5vh);
 }
 .classic-channel-tab.is-focused {
-    box-shadow: inset 0 0 0 2px #a970ff;
+    box-shadow: inset 0 0 0 2px #9146ff;
     border-radius: 0.4vh 0.4vh 0 0;
 }

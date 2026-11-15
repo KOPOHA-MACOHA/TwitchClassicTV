@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Package the fork UI with the pinned upstream 3.0.379 native player."""
 from pathlib import Path
-import argparse, hashlib, json, os, shutil, struct, subprocess, zipfile, zlib
+import argparse, hashlib, json, os, shutil, subprocess, zipfile
 root = Path(__file__).resolve().parent.parent
 release = json.loads((root/'fork-build/version.json').read_text())
 p = argparse.ArgumentParser()
@@ -28,11 +28,8 @@ with zipfile.ZipFile(work/'classic-ui.zip','w',zipfile.ZIP_DEFLATED) as z:
  for folder in ['app','release/githubio/css']:
   for f in (root/folder).rglob('*'):
    if f.is_file(): z.write(f,'assets/'+str(f.relative_to(root)))
- branding = {'res/Ko.png':'classic_icon','res/MB.png':'classic_splash','res/Nv.png':'classic_banner','res/OA.png':'classic_banner','res/4J.png':'classic_splash'}
+ branding = {'res/Ko.png':'classic_icon','res/MB.png':'classic_splash','res/Nv.png':'classic_icon','res/OA.png':'classic_banner','res/4J.png':'classic_foreground','res/1B.png':'classic_background'}
  for dest,name in branding.items(): z.write(root/'apk/app/src/main/res/drawable-nodpi'/(name+'.png'),dest)
- def chunk(kind,data): return struct.pack('>I',len(data))+kind+data+struct.pack('>I',zlib.crc32(kind+data)&0xffffffff)
- purple=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',1,1,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(b'\x00\x91\x46\xff\xff'))+chunk(b'IEND',b'')
- z.writestr('res/1B.png',purple)
  z.writestr('res/aK.xml','<layer-list xmlns:android="http://schemas.android.com/apk/res/android" android:opacity="opaque"><item android:drawable="#9146ff"/><item><bitmap android:src="@mipmap/ic_splash" android:gravity="center"/></item></layer-list>')
  z.write(root/'LICENSE','assets/LICENSE');z.write(work/'classic-source.zip','assets/classic-source.zip')
  for name in ['Patches.kt','build.py','version.json']: z.write(root/'fork-build'/name,'assets/classic-build-source/'+name)

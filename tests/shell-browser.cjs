@@ -1,6 +1,28 @@
 const {chromium} = require('playwright-core'),
     assert = require('assert/strict');
 const {PNG} = require('pngjs');
+// Inspect the real Android foreground, including every antialiased edge pixel.
+// Android launchers may crop it to a circle, squircle, rounded square or teardrop.
+const fs = require('fs'),
+    path = require('path');
+const brandingRoot = path.join(__dirname, '../apk/app/src/main/res/drawable-nodpi');
+const foreground = PNG.sync.read(fs.readFileSync(path.join(brandingRoot, 'classic_foreground.png')));
+assert.equal(foreground.width, 1080);
+assert.equal(foreground.height, 1080);
+let ink = 0;
+for (let y = 0; y < foreground.height; y++)
+    for (let x = 0; x < foreground.width; x++) {
+        if (foreground.data[(y * foreground.width + x) * 4 + 3]) {
+            ink++;
+            assert.ok(Math.hypot(x + 0.5 - 540, y + 0.5 - 540) <= 330, 'whole Glitch fits adaptive safe circle');
+        }
+    }
+assert.ok(ink > 20000, 'foreground contains the actual symbol');
+for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
+    const png = PNG.sync.read(fs.readFileSync(path.join(brandingRoot, name + '.png')));
+    assert.deepEqual(Array.from(png.data.slice(0, 4)), [145, 70, 255, 255], 'official Twitch purple background');
+    if (name === 'classic_icon') assert.equal(png.width, png.height, 'settings icon is square');
+}
 (async () => {
     const browser = await chromium.launch({
         executablePath:
@@ -87,6 +109,25 @@ const {PNG} = require('pngjs');
         });
         await page.waitForTimeout(350);
         assert.equal(await page.locator('#classic_nav button').count(), 6);
+        const logo = page.locator('.classic-brand img');
+        await logo.evaluate(img => img.decode());
+        assert.equal(await logo.getAttribute('src'), 'branding/twitch-wordmark.svg');
+        assert.equal(await logo.getAttribute('alt'), 'Twitch');
+        assert.equal(await page.locator('.classic-brand span').count(), 0);
+        assert.deepEqual(await page.evaluate(() => [1, 2, 5, 11, 14, 21, 22, 25, 101, 112].map(Main_GetViewerStrings)), [
+            'зритель',
+            'зрителя',
+            'зрителей',
+            'зрителей',
+            'зрителей',
+            'зритель',
+            'зрителя',
+            'зрителей',
+            'зритель',
+            'зрителей'
+        ]);
+        assert.equal(await page.evaluate(() => Main_formatNumber(12345678)), '12\u00a0345\u00a0678');
+        assert.equal(await page.evaluate(() => Main_GetViewsStrings(22)), ' просмотра');
         assert.equal(await page.locator('#side_panel_new_holder').isVisible(), false);
         assert.equal(await page.evaluate(() => ScreenObj[Main_Live].ColumnsCount), 4);
         await page.screenshot({path: 'tests/home-classic.png'});
@@ -99,7 +140,7 @@ const {PNG} = require('pngjs');
             [thumb.width - 2, Math.floor(thumb.height / 2)]
         ]) {
             const at = (y * thumb.width + x) * 4;
-            assert.deepEqual(Array.from(thumb.data.slice(at, at + 3)), [169, 112, 255]);
+            assert.deepEqual(Array.from(thumb.data.slice(at, at + 3)), [145, 70, 255]);
         }
 
         const table = await page.evaluate(() => ScreenObj[Main_Live].table);
@@ -548,6 +589,26 @@ const {PNG} = require('pngjs');
             () => Main_values.Main_Go === Main_ChannelClip && ScreenObj[Main_ChannelClip].itemsCount === 8 && ScreenObj[Main_ChannelClip].status
         );
         await verifyChannelGrid('tests/channel-clips-classic.png');
+
+        for (const [width, height] of [
+            [1280, 720],
+            [1920, 1080]
+        ]) {
+            await page.setViewportSize({width, height});
+            const bounds = await page.locator('#classic_nav').evaluate(nav => {
+                const elements = [nav.querySelector('.classic-brand'), ...nav.querySelectorAll('button')];
+                return elements.map(el => {
+                    const r = el.getBoundingClientRect();
+                    return {left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height};
+                });
+            });
+            assert.ok(
+                bounds.every(r => r.left >= 0 && r.right <= width && r.top >= 0 && r.bottom <= height * 0.095),
+                'header fits TV viewport'
+            );
+            for (let i = 1; i < bounds.length; i++) assert.ok(bounds[i].left >= bounds[i - 1].right, 'header items do not overlap');
+            assert.ok(Math.abs(bounds[0].width / bounds[0].height - 3) < 0.01, 'official wordmark keeps its aspect ratio');
+        }
 
         assert.deepEqual(errors, []);
         console.log(

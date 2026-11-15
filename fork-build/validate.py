@@ -15,6 +15,10 @@ m=a.get_android_manifest_xml();assert m.find('application').get('{'+ns['a']+'}la
 assert m.xpath('//category[@a:name="android.intent.category.LEANBACK_LAUNCHER"]',namespaces=ns)
 auth=set(m.xpath('//provider/@a:authorities',namespaces=ns));old=set(b.get_android_manifest_xml().xpath('//provider/@a:authorities',namespaces=ns));assert not auth&old
 with zipfile.ZipFile(path) as z:
+ for packaged,source in {'res/Ko.png':'classic_icon','res/Nv.png':'classic_icon','res/OA.png':'classic_banner','res/4J.png':'classic_foreground','res/MB.png':'classic_splash'}.items():
+  assert z.read(packaged)==(root/'apk/app/src/main/res/drawable-nodpi'/(source+'.png')).read_bytes(),packaged
+ for name in ['twitch-glitch.svg','twitch-wordmark.svg']:
+  assert z.read('assets/app/branding/'+name)==(root/'app/branding'/name).read_bytes(),name
  for rel in ['app/specific/PlayEtc.js','app/specific/PlayMulti.js','app/specific/PlayHLS.js','app/specific/ClassicUpdates.js','app/specific/ClassicMulti.js','app/styles/multi.css','app/general/classic-version.js','app/specific/ClassicChatPresentation.js','app/styles/presentation.css','app/styles/fonts.css','app/fonts/Inter-latin.woff2','app/fonts/Inter-cyrillic.woff2','app/fonts/Inter-LICENSE.txt','app/specific/ChatLive.js','app/specific/ChatVod.js','app/specific/ClassicPlayback.js','app/specific/Play.js','app/specific/Main.js','app/specific/ClassicFeatures.js','app/specific/ClassicChat.js','app/specific/PlayChannelPoints.js','app/specific/PlayAutoClaim.js','app/specific/PlayRaid.js','app/styles/chat-features.css','app/specific/ClassicPages.js','app/styles/pages.css','app/styles/player.css','app/specific/ClassicShell.js','app/styles/shell.css','app/specific/PlayClassic.js','app/styles/classic.css','app/thirdparty/qrcode.js','app/thirdparty/qrcode-LICENSE','app/specific/AddUser.js']:
   assert z.read('assets/'+rel)==(root/rel).read_bytes(),rel
  with zipfile.ZipFile(io.BytesIO(z.read('assets/classic-source.zip'))) as src:

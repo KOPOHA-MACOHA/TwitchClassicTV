@@ -1,4 +1,4 @@
-# Twitch Classic 0.15
+# Twitch Classic 0.16
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -9,7 +9,7 @@ The account screen generates its QR code locally using qrcode-generator 1.4.4 (M
 
 ## Build provenance
 
-This APK retains the native Media3 player from the upstream signed release 3.0.379. It bundles this fork's source UI in Android assets, redirects the existing native WebViews to these assets, changes the application identity to `org.tvmod.classic`, and is signed separately. It installs alongside upstream SmartTwitchTV and official Twitch. It does not reuse modifications to the official Twitch APK from earlier experiments. The launcher icon, adaptive icon layers, TV banner and splash image are replaced using the bundled Twitch Glitch vector. The launch background is purple; the header uses the same mark and normally spaced text. Branding is mapped to the original resource IDs of the SHA-pinned native input.
+This APK retains the native Media3 player from the upstream signed release 3.0.379. It bundles this fork's source UI in Android assets, redirects the existing native WebViews to these assets, changes the application identity to `org.tvmod.classic`, and is signed separately. It installs alongside upstream SmartTwitchTV and official Twitch. It does not reuse modifications to the official Twitch APK from earlier experiments. The launcher and splash use the official bundled Twitch Glitch vector. The header and TV banner use the official extruded wordmark. Backgrounds use Twitch Purple #9146FF. Square app icons are separate from the 16:9 banner, and the adaptive foreground stays inside the central safe circle. Branding is mapped to the original resource IDs of the SHA-pinned native input.
 
 Native input: https://github.com/fgl27/SmartTwitchTV/releases/download/379/SmartTV_twitch_3_0_379.apk
 SHA-256: 60c405bbec86501497360767f9e843e7e0fe788e030244d5ec4d63eebf973d99
@@ -108,3 +108,7 @@ Multistream chat can target an occupied slot without changing the main video. La
 The 0.14 unlimited default is rolled back to the existing standard small-player profile used in 0.13. An explicit migration resets the old default once. A raised ceiling remains an opt-in; native failures after StartMultiStream retry an affected extra slot at most once with standard settings. Terminal errors retain the main window and refresh the picker after the native failure handler clears the failed slot, including early-return paths. Error text is shown above the grid. Diagnostics contain only slot/type/code/ceiling/time, with no playback URL or token.
 
 The regression fixture now models decoder rejection through the real smartTwitchTV.Play_MultiEnd entry point after an attempted start. It tests standard settings on entry, restored chat visibility when entering from visible chat, recovery of multiple failed elevated slots, and a permanent failure without a retry loop or removal of the main window. Physical-device decoding remains unverified; the decoder-limit hypothesis is compatible with the regression report rather than a captured TV log.
+
+## 0.16 branding and UI review
+
+Uses the official extruded Twitch wordmark and Glitch vectors from the public brand package, bundled offline. Android app_icon previously pointed at the widescreen banner; it now points at the padded square icon. Adaptive foreground and splash are separate resources, and render-branding.cjs also refreshes Gradle resource variants. Primary decoration is #9146FF; readable light text highlights remain #BF94FF. Russian count labels now handle 1/2/5 and 11–14 correctly, using nonbreaking thousands separators. Settings display the installed version and describe account backup more precisely. See docs/UI-REVIEW.md for checked surfaces, remaining suggestions and physical-device limits.

@@ -162,10 +162,10 @@ const {chromium} = require('playwright-core'),
             assert.ok(Math.abs(h.inner.y - h.header.bottom) < 1, JSON.stringify(h));
             assert.ok(Math.abs(h.holder.h - h.inner.h) < 1, JSON.stringify(h));
         }
-        assert.equal(result.headers[0].text.trim(), '1,234,567');
+        assert.equal(result.headers[0].text.trim(), '1\u00a0234\u00a0567');
         assert.equal(result.headers[0].type, 'viewers');
-        assert.match(result.headers[0].label, /1,234,567/);
-        assert.equal(result.headers[1].text.trim(), '4,321');
+        assert.match(result.headers[0].label, /1\s234\s567/);
+        assert.equal(result.headers[1].text.trim(), '4\u00a0321');
         assert.equal(result.headers[1].type, 'chatters');
         assert.deepEqual(
             result.live.map(v => v.color),
@@ -227,22 +227,22 @@ const {chromium} = require('playwright-core'),
             ChatLive_loadChattersViewersSuccess(JSON.stringify({data: [{viewer_count: 1800}]}), 0, 900);
             ChatLive_loadChattersSuccess({status: 200, responseText: JSON.stringify({data: {channels: [{chatters: {count: 932}}]}})}, 0, 900);
         });
-        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '1,800(932)');
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '1800(932)');
         assert.match(await page.locator('#chat_loggedin0').getAttribute('aria-label'), /Подключены к чату: 932/);
         await page.evaluate(() => {
             ChatLive_loadChattersSuccess({status: 200, responseText: JSON.stringify({data: {channels: [{chatters: {count: 999}}]}})}, 0, 899);
             ChatLive_loadChattersViewersSuccess(JSON.stringify({data: [{viewer_count: 2000}]}), 0, 900);
         });
-        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2,000(932)');
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2000(932)');
         await page.evaluate(() => ClassicFeatures_set('connected_chatters', false));
-        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2,000');
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2000');
         await page.evaluate(() => {
             ClassicFeatures_set('connected_chatters', true);
             ClassicChatPresentation_resetCounts(0);
             ChatLive_loadChattersSuccess({status: 200, responseText: JSON.stringify({data: {channels: [{chatters: {count: 0}}]}})}, 0, 900);
             ChatLive_loadChattersViewersSuccess(JSON.stringify({data: [{viewer_count: 2001}]}), 0, 900);
         });
-        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2,001(0)');
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2001(0)');
         await page.evaluate(() => ChatLive_resetChatters(0));
         assert.equal(await page.locator('#chat_loggedin0').isVisible(), false);
         assert.deepEqual(errors, []);

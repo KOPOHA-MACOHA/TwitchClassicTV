@@ -234,7 +234,7 @@
     height: 100%;
 }
 .classic-player-ui #inner_progress_bar {
-    background: #a970ff !important;
+    background: #9146ff !important;
     border-radius: 0.4vh !important;
     top: 0;
     bottom: 0;
@@ -382,7 +382,7 @@
 }
 .classic-player-ui #progress_bar_div.progress_bar_div_focus #progress_bar_inner_container {
     height: 0.65vh;
-    box-shadow: 0 0 0 0.25vh #a970ff22;
+    box-shadow: 0 0 0 0.25vh #9146ff22;
 }
 .classic-player-ui .inner_progress_circle {
     width: 1.1vh;
@@ -445,7 +445,7 @@
     box-sizing: border-box;
 }
 .classic-player-ui #inner_progress_bar {
-    background: #a970ff !important;
+    background: #9146ff !important;
     z-index: 2;
 }
 .classic-player-ui #inner_progress_bar_buffer {

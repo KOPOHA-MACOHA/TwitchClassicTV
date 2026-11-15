@@ -30,15 +30,6 @@ body.classic-shell {
     z-index: 20;
     box-sizing: border-box;
 }
-.classic-brand {
-    color: #bf94ff;
-    font:
-        bold calc(4.3vh * var(--classic-type-scale, 1))/1 Arial,
-        sans-serif;
-    letter-spacing: 0;
-    margin-right: 2.5vw;
-    padding-right: 1vw;
-}
 .classic-nav-button {
     display: flex;
     align-items: center;
@@ -67,13 +58,13 @@ body.classic-shell {
     left: 1vw;
     right: 1vw;
     height: 0.35vh;
-    background: #a970ff;
+    background: #9146ff;
 }
 .classic-nav-button.nav-focus {
     outline: 0;
     color: white;
     background: #35353b;
-    border-color: #a970ff;
+    border-color: #9146ff;
 }
 .classic-nav-button:nth-last-child(3) {
     margin-left: auto;
@@ -141,7 +132,7 @@ body.classic-shell {
 }
 .classic-shell #screens_holder .stream_thumbnail_focused .stream_thumbnail_live_img,
 .classic-shell #screens_holder .stream_thumbnail_focused_no_ani .stream_thumbnail_live_img {
-    outline: 0.35vh solid #a970ff;
+    outline: 0.35vh solid #9146ff;
     outline-offset: 0.4vh;
 }
 .classic-shell #screens_holder .stream_thumbnail_live_text_holder {
@@ -221,7 +212,7 @@ body.classic-shell {
     overflow: hidden;
 }
 .classic-shell #screens_holder .stream_thumbnail_focused .stream_thumbnail_live_game {
-    outline: 0.35vh solid #a970ff;
+    outline: 0.35vh solid #9146ff;
     outline-offset: 0.4vh;
 }
 .classic-shell #screens_holder .stream_info_game_name {
@@ -337,7 +328,7 @@ body.classic-shell {
 }
 .classic-preference-row:focus {
     outline: 0;
-    border-color: #a970ff;
+    border-color: #9146ff;
     background: #29292e;
 }
 #classic_preferences footer {
@@ -407,7 +398,7 @@ body.classic-shell {
     font-size: 2.3vh;
 }
 .classic-shell #dialog_settings .settings_div_focus {
-    border: 2px solid #a970ff !important;
+    border: 2px solid #9146ff !important;
     border-image: none !important;
     background: #29292e;
 }
@@ -630,7 +621,7 @@ body.classic-shell {
 }
 .classic-value-list button:focus {
     outline: 0;
-    border-color: #a970ff;
+    border-color: #9146ff;
     background: #303036;
 }
 .classic-shell #search {
@@ -652,7 +643,7 @@ body.classic-shell {
     text-align: left;
 }
 .classic-shell #search_input:focus {
-    border-color: #a970ff;
+    border-color: #9146ff;
 }
 .classic-shell #search .button_search {
     font:
@@ -665,7 +656,7 @@ body.classic-shell {
 }
 .classic-shell #search .button_search_focused {
     background: #29292e;
-    border-color: #a970ff;
+    border-color: #9146ff;
     color: #efeff1;
 }
 .classic-shell #dialog_settings .settings_div:focus {
@@ -675,23 +666,14 @@ body.classic-shell {
 .classic-brand {
     display: flex;
     align-items: center;
-    gap: 0.9vw;
+    flex: none;
     margin-right: 1.5vw;
-    padding-right: 0;
-    font-weight: 700;
-    letter-spacing: 0;
-    color: #efeff1;
 }
 .classic-brand img {
-    width: 4.3vh;
-    height: 4.3vh;
+    width: 14.4vh;
+    height: 4.8vh;
     display: block;
-}
-.classic-brand span {
-    font:
-        700 3.6vh/1 Arial,
-        sans-serif;
-    letter-spacing: 0;
+    object-fit: contain;
 }
 /* Focus is drawn inside the thumbnail, above its image, so row clipping cannot hide it. */
 .classic-shell #screens_holder .stream_thumbnail_focused .stream_thumbnail_live_img,
@@ -706,14 +688,14 @@ body.classic-shell {
     position: absolute;
     inset: 0;
     z-index: 30;
-    border: 0.35vh solid #a970ff;
+    border: 0.35vh solid #9146ff;
     border-radius: 0.7vh;
     box-sizing: border-box;
     pointer-events: none;
 }
 .classic-preference-row.is-focused {
     outline: none;
-    border-color: #a970ff;
+    border-color: #9146ff;
     background: #29292e;
 }
 .classic-shell #main_dialog_exit {
@@ -820,6 +802,6 @@ body.classic-shell {
 }
 .classic-following-box button:focus {
     outline: 0;
-    border-color: #a970ff;
+    border-color: #9146ff;
     background: #303036;
 }
