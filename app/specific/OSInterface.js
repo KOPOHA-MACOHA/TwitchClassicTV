@@ -834,7 +834,7 @@ function OSInterface_StartScreensPlayer(uri, mainPlaylistString, ResumePosition,
         left,
         parseInt(web_height),
         who_called,
-        Settings_Obj_default('preview_screen_sizes') === 1
+        false // Keep the native preview inside the thumbnail and its focus frame.
     );
 }
 
@@ -847,7 +847,7 @@ function OSInterface_StartScreensPlayer(uri, mainPlaylistString, ResumePosition,
 //Start MultiStream at position
 function OSInterface_ScreenPlayerRestore(bottom, right, left, web_height, who_called) {
     if (Main_IsOn_OSInterface)
-        Android.ScreenPlayerRestore(bottom, right, left, parseInt(web_height), who_called, Settings_Obj_default('preview_screen_sizes') === 1);
+        Android.ScreenPlayerRestore(bottom, right, left, parseInt(web_height), who_called, false);
 }
 
 //public void ClearFeedPlayer()

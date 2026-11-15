@@ -186,6 +186,7 @@ function Play_SetPlayQuality(quality) {
 }
 
 function Play_Start(offline_chat) {
+    if (!offline_chat) ClassicPlayback_begin();
     //Main_Log('Play_Start');
 
     if (!Play_OlddataSet()) {
@@ -430,6 +431,7 @@ function Play_CheckResume() {
 }
 
 function Play_Resume() {
+    ClassicPlayback_begin();
     UserLiveFeed_Hide();
 
     ChatLive_Playing = true;
@@ -849,10 +851,13 @@ function Play_loadDataSuccessEnd(playlist, startChat, SkipSaveHistory) {
         Play_LoadLogo(Main_getElementById('stream_info_icon'), IMG_404_BANNER);
         Play_UpdateMainStreamDiv();
     }
-    Play_UpdateMainStream(startChat, true);
-
     Play_data.playlist = playlist;
     if (Play_isOn) Play_onPlayer();
+    var generation = ClassicPlayback.generation;
+    Main_setTimeout(function () {
+        if (generation !== ClassicPlayback.generation || !Play_isOn) return;
+        ClassicPlayback_optional('stream-info-and-chat', function () { Play_UpdateMainStream(startChat, true); });
+    }, 0);
 
     Play_data_old = JSON.parse(JSON.stringify(Play_data_base));
     UserLiveFeed_PreventHide = false;
@@ -1421,9 +1426,12 @@ function Play_ClearPlayer() {
 }
 
 function Play_ClearPlay(clearChat) {
+    PlayClassic_actualQuality=null;
+    if (PlayClassic_isOpen()) PlayClassic_close();
     //Main_Log('Play_ClearPlay');
 
     Play_Playing = false;
+    ClassicPlayback_stop();
     Main_removeEventListener('keydown', Play_handleKeyDown);
     if (clearChat) ChatLive_Clear(0);
 
@@ -1674,14 +1682,14 @@ function Play_RefreshWatchingTime() {
 
         return;
     } else {
-        Main_textContentWithEle(Play_infoWatchingTime, ', ' + STR_WATCHING + Play_timeMs(dateNow - Play_data.watching_time));
+        Main_textContentWithEle(Play_infoWatchingTime, (ClassicShell_ru() ? ' · Смотришь ' : ' · Watching ') + Play_timeMs(dateNow - Play_data.watching_time));
         Main_textContentWithEle(Play_infoLiveTime, Play_GetLiveTime(dateNow, Play_data.data[12], Play_data.watching_time));
     }
 }
 
 //Server time info may be wrong resulting in too big time
 function Play_GetLiveTime(dateNow, Time, watching_time) {
-    return STR_SINCE + Play_streamLiveAtWitDate(dateNow, Time && parseInt(Time) ? Time : watching_time);
+    return (ClassicShell_ru() ? 'В эфире ' : 'Live for ') + Play_streamLiveAtWitDate(dateNow, Time && parseInt(Time) ? Time : watching_time);
 }
 
 function Play_VideoStatusTest() {
@@ -1745,6 +1753,7 @@ function Play_ShowVideoStatus(showLatency, Who_Called, valueString) {
     if (!valueString) return;
 
     var value = JSON.parse(valueString);
+    PlayClassic_updateDelay(showLatency && Play_isOn, value[5]);
 
     if (Play_Status_Visible !== 2) {
         Play_UpdateVideoStatus(
@@ -1798,6 +1807,7 @@ function Play_getMbps(value) {
 }
 
 function Play_ShowVideoQuality(who_called, value) {
+    if (value) PlayClassic_actualQuality={kind:who_called===0?1:2,value:ClassicShell_text(value)};
     if (!value) {
         if (!who_called) {
             Play_SetHtmlQuality(Play_info_quality);
@@ -1807,6 +1817,7 @@ function Play_ShowVideoQuality(who_called, value) {
     } else {
         Main_innerHTML('stream_quality', value);
     }
+    PlayClassic_syncQualityLabel();
 }
 
 function Play_clearHidePanel() {
@@ -1944,6 +1955,7 @@ function Play_qualityDisplay(getQualitiesCount, qualityIndex, callback, obj) {
     }
 
     callback(obj.doc_name);
+    if (obj === Play_controls[Play_controlsQuality]) PlayClassic_syncQualityLabel();
 }
 
 function Play_qualityIndexReset() {

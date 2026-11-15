@@ -50,9 +50,9 @@
     <application
         android:allowBackup="true"
         android:fullBackupContent="true"
-        android:icon="@mipmap/ic_launchers"
-        android:roundIcon="@mipmap/ic_launchers"
-        android:banner="@drawable/banner"
+        android:icon="@drawable/classic_icon"
+        android:roundIcon="@drawable/classic_icon"
+        android:banner="@drawable/classic_banner"
         android:label="@string/app_name"
         android:theme="@style/AppTheme"
         android:hardwareAccelerated="true"
@@ -62,9 +62,9 @@
             android:exported="true"
             android:name=".PlayerActivity"
             android:label="@string/app_name"
-            android:logo="@mipmap/app_icon"
+            android:logo="@drawable/classic_banner"
             android:launchMode="singleInstance"
-            android:theme="@style/AppTheme.Launcher"
+            android:theme="@style/ClassicLauncher"
             android:screenOrientation="landscape"
             tools:ignore="LockedOrientationActivity">
             <intent-filter>

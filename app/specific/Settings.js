@@ -38,6 +38,7 @@ var Settings_AV1Supported = 0;
 var Settings_HEVCSupported = 0;
 
 var Settings_value = {
+    classic_player: {values: [0, 1], defaultValue: 2},
     content_lang: {
         values: [
             'All',
@@ -902,10 +903,12 @@ function Settings_init() {
     Main_HideElement('label_refresh');
     Settings_cursorY = 0;
     Settings_inputFocus(Settings_cursorY);
+    ClassicShell_openSettings();
     Main_EventScreen('Settings');
 }
 
 function Settings_exit() {
+    ClassicShell_closeSettings();
     Settings_ScrollTableReset();
     Main_removeEventListener('keydown', Settings_handleKeyDown);
     Main_IconLoad('label_thumb', 'icon-options', STR_THUMB_OPTIONS_TOP);
@@ -959,6 +962,8 @@ function Settings_SetSettings() {
 
     //Individual settings
     div += Settings_Content('start_user_screen', array_no_yes, STR_START_AT_USER, STR_START_AT_USER_SUMMARY);
+
+    div += Settings_Content('classic_player', array_no_yes, STR_CLASSIC_PLAYER, STR_CLASSIC_PLAYER_SUMMARY);
 
     // Player settings title
     div += Settings_DivTitle('play', STR_SETTINGS_PLAYER);
@@ -1050,6 +1055,7 @@ function Settings_SetSettings() {
 }
 
 function Settings_Content(key, valuesArray, STR, STR_SUMMARY) {
+    ClassicShell_descriptors[key] = {title: ClassicShell_text(STR), summary: ClassicShell_text(STR_SUMMARY)};
     Settings_value_keys.push(key);
     if (valuesArray) Settings_value[key].values = valuesArray;
 
@@ -1376,6 +1382,7 @@ function Settings_SetarrowsKey(key) {
 }
 
 function Settings_SetDefault(position) {
+    if (position === 'classic_player') { PlayClassic_applyMode(); return; }
     if (position === 'content_lang') Settings_SetLang();
     else if (position === 'app_lang') Settings_UpdateString();
     else if (position === 'live_notification') Settings_notification();
@@ -1403,6 +1410,7 @@ function Settings_SetDefault(position) {
     else if (position === 'enable_mature') Settings_checkMature();
     else if (position === 'global_font_offset') {
         calculateFontSize();
+        ClassicShell_updateScale();
         AddUser_UpdateSidePanelAfterShow();
         UserLiveFeed_ResetAddCellsize();
         Sidepannel_Scroll(true);
@@ -2018,6 +2026,7 @@ function Settings_handleKeyRight(key) {
 }
 
 function Settings_handleKeyDown(event) {
+    if (ClassicShell_settingsKey(event)) return;
     switch (event.keyCode) {
         case KEY_KEYBOARD_BACKSPACE:
         case KEY_RETURN:
@@ -2175,6 +2184,7 @@ function Settings_handleKeyDownReturn() {
     Main_HideElement('dialog_codecs');
     Main_removeEventListener('keydown', Settings_handleKeyDownCodecs);
     Main_addEventListener('keydown', Settings_handleKeyDown);
+    ClassicShell_settingsFocus();
     Main_getElementById('settings_codec_container_scroll').style.transform = '';
 }
 
@@ -2791,12 +2801,6 @@ function Settings_DialogShowSmallPayer(click) {
             title: STR_SHOW_CLIP_PLAYER,
             summary: null
         },
-        preview_screen_sizes: {
-            defaultValue: Settings_value.preview_screen_sizes.defaultValue,
-            values: Settings_value.preview_screen_sizes.values,
-            title: STR_PREVIEW_SIZE_SCREEN,
-            summary: STR_PREVIEW_SIZE_SCREEN_SUMMARY
-        },
         preview_sizes: {
             defaultValue: Settings_value.preview_sizes.defaultValue,
             values: Settings_value.preview_sizes.values,
@@ -3020,7 +3024,12 @@ function Settings_DialogShowUIOpt(click) {
         }
     };
 
-    Settings_DialogShow(obj, STR_UI_SETTINGS, click);
+    // The shell uses a fixed Twitch theme; keep the functional appearance preferences.
+    var shellOptions = {};
+    ['thumb_quality', 'app_animations', 'videos_animation', 'global_font_offset', 'hide_player_clock', 'burn_in_protection'].forEach(function (key) {
+        shellOptions[key] = obj[key];
+    });
+    Settings_DialogShow(shellOptions, STR_UI_SETTINGS, click);
 }
 
 function Settings_DialogShowCustomOpt(click) {
@@ -3330,7 +3339,7 @@ function Settings_DialogAddBackupAccount() {
     GDriveStart();
 }
 
-function Settings_DialogShowChat(click) {
+function Settings_DialogShowChat(click, group) {
     var yes_no = [STR_NO, STR_YES];
     Settings_value.highlight_rewards.values = yes_no;
     Settings_value.highlight_first.values = yes_no;
@@ -3407,12 +3416,6 @@ function Settings_DialogShowChat(click) {
             values: Settings_value.show_chatters.values,
             title: STR_SHOW_IN_CHAT,
             summary: STR_SHOW_IN_CHAT_SUMMARY
-        },
-        chat_nickcolor: {
-            defaultValue: Settings_value.chat_nickcolor.defaultValue,
-            values: Settings_value.chat_nickcolor.values,
-            title: STR_CHAT_NICK_COLOR,
-            summary: STR_CHAT_NICK_COLOR_SUMMARY
         },
         highlight_rewards: {
             defaultValue: Settings_value.highlight_rewards.defaultValue,
@@ -3517,7 +3520,12 @@ function Settings_DialogShowChat(click) {
     var fontOffset = Settings_Obj_default('global_font_offset') + 4,
         offset = Object.keys(obj).length - fontOffset;
 
-    Settings_DialogShow(obj, STR_CHAT_OPTIONS, click, offset);
+    if (group) {
+        var selected = {};
+        group.keys.forEach(function (key) { if (obj[key]) selected[key] = obj[key]; });
+        obj = selected;
+    }
+    Settings_DialogShow(obj, group ? group.title : STR_CHAT_OPTIONS, click, offset);
 }
 
 function Settings_block_qualities(click) {
@@ -3603,7 +3611,7 @@ var Settings_DialogScrollCenter = 0;
 function Settings_DialogShow(obj, title, click, scroll) {
     Main_removeEventListener('keydown', Settings_handleKeyDown);
 
-    var dialogContent = title + STR_BR,
+    var dialogContent = '<header class="classic-dialog-header"><h2>' + title.split(STR_BR)[0] + '</h2><p id="classic_dialog_help"></p></header>',
         dialogScroollHolder =
             '<div id="settings_scroll_container" class="' +
             (scroll ? 'settings_scroll_container' : '') +
@@ -3612,6 +3620,8 @@ function Settings_DialogShow(obj, title, click, scroll) {
     Settings_DialogValue = [];
 
     for (var property in obj) {
+        ClassicShell_presentSetting(property, obj[property]);
+        ClassicShell_descriptors[property] = {title: ClassicShell_text(obj[property].title), summary: ClassicShell_text(obj[property].summary)};
         Settings_DialogValue.push(property);
         if (obj[property].keyenter) {
             dialogScroollHolder += Settings_Content(property, [STR_ENTER_TO_OPEN], obj[property].title, obj[property].summary);
@@ -3629,7 +3639,7 @@ function Settings_DialogShow(obj, title, click, scroll) {
         dialogContent +
             dialogScroollHolder +
             '<div id="dialog_setting_close_text" class="about_text_title">' +
-            (click ? STR_CLOSE_THIS_BROWSER : STR_CLOSE_THIS) +
+            ClassicShell_words().valueHint +
             '</div>'
     );
 
@@ -3640,12 +3650,14 @@ function Settings_DialogShow(obj, title, click, scroll) {
     Settings_SetarrowsKey(Settings_DialogValue[0]);
 
     Main_ShowElement('dialog_settings');
+    ClassicShell_dialogFocus(Settings_DialogValue[0]);
     Main_addEventListener('keydown', Settings_DialoghandleKeyDown);
 }
 
 function Settings_DialoghandleKeyReturn() {
     Settings_DialoghandleKeyReturnAfter();
     Main_addEventListener('keydown', Settings_handleKeyDown);
+    ClassicShell_settingsFocus();
 }
 
 function Settings_DialoghandleKeyReturnAfter() {
@@ -3678,12 +3690,14 @@ function Settings_BackupDialogExit(event) {
 }
 
 function Settings_DialoghandleKeyDown(event) {
+    if (event.preventDefault) event.preventDefault();
     if (Settings_BackupDialogExit(event)) {
         return;
     }
 
     switch (event.keyCode) {
         case KEY_ENTER:
+            if (ClassicShell_openDialogValue()) break;
             if (Main_A_includes_B(Settings_DialogValue[Settings_DialogPos], 'thumb_background')) {
                 SettingsColor_DialogColorsShow();
                 break;
@@ -3715,6 +3729,7 @@ function Settings_DialoghandleKeyDown(event) {
             Settings_DialoghandleKeyRight();
             break;
         case KEY_UP:
+            if (Settings_DialogPos === 0) { ClassicShell_focusNav(); break; }
             if (Settings_DialogPos > 0) {
                 Settings_DialogUpDown(-1);
 
@@ -3761,6 +3776,7 @@ function Settings_DialogUpDownAfter() {
     Main_AddClass(key, 'settings_value_focus');
     Main_AddClass(key + '_div', 'settings_div_focus');
     Settings_SetarrowsKey(key);
+    ClassicShell_dialogFocus(key);
 }
 
 function Settings_DialogRightLeft(offset) {

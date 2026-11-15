@@ -715,7 +715,7 @@ function PlayVod_ProgressBarrUpdate(current_time_seconds, duration_seconds, upda
     }
 
     Play_ProgresBarrBufferElm.style.transform =
-        'translate(' + Math.min(Math.ceil(-99 + ((current_time_seconds + Play_BufferSize) / duration_seconds) * 100.0), 0) + '%, -32%)';
+        'translate(' + Math.min(Math.ceil(-99 + ((current_time_seconds + Play_BufferSize) / duration_seconds) * 100.0), 0) + (PlayClassic_enabled() ? '%, 0)' : '%, -32%)');
 
     var x_offset = Math.min(
         Math.max(PlayVod_ProgresMaxSize + (current_time_seconds / duration_seconds) * 100, PlayVod_ProgresMaxSize),
@@ -1070,11 +1070,15 @@ function PlayVod_SetPreview() {
 }
 
 function PlayVod_handleKeyDown(e) {
+    if (PlayClassic_isOpen()) { PlayClassic_handleKeyDown(e); return; }
     //console.log('PlayVod_handleKeyDown', e.keyCode);
 
     if ((!PlayVod_isOn || !Main_isScene2DocVisible()) && !Play_isVodDialogVisible()) {
         return;
     }
+
+    if (PlayClassic_revealOnInput(e, 2)) return;
+    if (PlayClassic_navigateRow(e, 2)) return;
 
     Play_screeOn();
 
@@ -1194,7 +1198,7 @@ function PlayVod_handleKeyDown(e) {
                     if (PlayVod_IsJumping) PlayVod_jump();
                 } else if (PlayVod_PanelY === 1) {
                     if (!Play_isEndDialogVisible()) OSInterface_PlayPauseChange(2);
-                } else Play_BottomOptionsPressed(2);
+                } else Play_BottomOptionsPressed(2, e);
                 PlayVod_setHidePanel();
             } else if (UserLiveFeed_isPreviewShowing()) {
                 if (UserLiveFeed_DataObj[UserLiveFeed_FeedPosX][UserLiveFeed_FeedPosY[UserLiveFeed_FeedPosX]].image) {

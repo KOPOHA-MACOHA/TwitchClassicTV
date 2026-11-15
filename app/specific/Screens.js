@@ -155,6 +155,7 @@ function Screens_assign() {
 //Variable initialization end
 
 function Screens_first_init() {
+    ClassicPlayback_boot();
     var Last_obj = OSInterface_GetLastIntentObj(),
         obj,
         live_channel_call,
@@ -284,6 +285,8 @@ function Screens_first_init() {
 }
 
 function Screens_init(key, preventRefresh) {
+    if (key === Main_UserLive) { ChannelClassic_clearTabs(); FollowingClassic_init(); return; }
+    ChannelClassic_updateTabs(key);
     //Main_Log('Screens_init ' + ScreenObj[key].screen);
     Main_addFocusVideoOffset = -1;
     Main_values.Main_Go = key; //Sidepannel, playclip, Main_updateClock Screens_Isfocused Main_CheckStop use this var
@@ -333,6 +336,8 @@ function Screens_needsRefresh(key, preventRefresh) {
 }
 
 function Screens_exit(key) {
+    if (key === Main_UserLive && FollowingClassic.active) { FollowingClassic_exit(); return; }
+    if (key === Main_ChannelVod || key === Main_ChannelClip) ChannelClassic_clearTabs();
     //Main_Log('Screens_exit ' + ScreenObj[key].screen);
 
     Main_addFocusVideoOffset = 0;
@@ -344,6 +349,7 @@ function Screens_exit(key) {
 }
 
 function Screens_StartLoad(key) {
+    if (key === Main_UserLive && FollowingClassic.active) { FollowingClassic_reload(); return; }
     if (key === Main_values.Main_Go && Main_isScene1DocVisible()) {
         Screens_RemoveFocus(key);
         Main_showLoadDialog();
@@ -514,6 +520,7 @@ function Screens_concatenate(responseObj, key) {
 }
 
 function Screens_loadDataSuccess(key) {
+    if (key === Main_UserLive && FollowingClassic.active) return;
     var data_length = ScreenObj[key].data.length,
         response_items = data_length - ScreenObj[key].data_cursor,
         currentRowId = ScreenObj[key].row_id;
@@ -722,6 +729,7 @@ function Screens_createCellGame(id, idArray, valuesArray, key) {
 }
 
 function Screens_createCellClip(id, idArray, valuesArray, key, Extra_when, Extra_until) {
+    if (document.body.classList.contains('classic-shell')) return ClassicPages_streamCard('clip', id, idArray, valuesArray, key, null, false);
     var playing = valuesArray[3] && valuesArray[3] !== '' ? STR_PLAYING + valuesArray[3] : '';
     ScreenObj[key].DataObj[id] = valuesArray;
 
@@ -791,6 +799,7 @@ function Screens_createCellClip(id, idArray, valuesArray, key, Extra_when, Extra
 }
 
 function Screens_createCellVod(id, idArray, valuesArray, key, Extra_when, Extra_until) {
+    if (document.body.classList.contains('classic-shell')) return ClassicPages_streamCard('vod', id, idArray, valuesArray, key, null, false);
     ScreenObj[key].DataObj[id] = valuesArray;
 
     return (
@@ -868,6 +877,7 @@ function Screens_createCellVod(id, idArray, valuesArray, key, Extra_when, Extra_
 }
 
 function Screens_createCellLive(id, idArray, valuesArray, key, Extra_when, Extra_vodimg, force_VOD) {
+    if (document.body.classList.contains('classic-shell')) return ClassicPages_streamCard('live', id, idArray, valuesArray, key, Extra_vodimg, force_VOD);
     if (!valuesArray[1]) valuesArray[1] = valuesArray[6];
 
     var ishosting = valuesArray[16],
@@ -880,7 +890,7 @@ function Screens_createCellLive(id, idArray, valuesArray, key, Extra_when, Extra
         idArray[3] +
         id +
         '" class="' +
-        ScreenObj[key].thumbclass +
+        ScreenObj[key].thumbclass + (force_VOD ? '' : ' classic-live-card') +
         '"><div id="' +
         idArray[0] +
         id +
@@ -924,7 +934,7 @@ function Screens_createCellLive(id, idArray, valuesArray, key, Extra_when, Extra
         idArray[12] +
         id +
         '" >' +
-        (valuesArray[3] !== '' ? STR_PLAYING + valuesArray[3] : '') +
+        (valuesArray[3] || '') +
         '</div><div id="' +
         idArray[4] +
         id +
@@ -938,8 +948,6 @@ function Screens_createCellLive(id, idArray, valuesArray, key, Extra_when, Extra
         idArray[10] +
         id +
         '" >' +
-        STR_SPACE_HTML +
-        STR_FOR +
         valuesArray[4] +
         STR_SPACE_HTML +
         Main_GetViewerStrings(valuesArray[13]) +
@@ -1173,6 +1181,7 @@ function Screens_loadDataSuccessFinishEnd(SkipHidedialog) {
 }
 
 function Screens_addFocus(forceScroll, key) {
+    if (key === Main_UserLive && FollowingClassic.active) { FollowingClassic_focus(forceScroll); return; }
     if (ScreenObj[key].emptyContent) {
         if (ScreenObj[key].HasSwitches) {
             ScreenObj[key].posY = -1;
@@ -1301,7 +1310,7 @@ function Screens_LoadPreviewRestore(key) {
     }
 
     var img = Main_getElementById(ScreenObj[key].ids[1] + ScreenObj[key].posY + '_' + ScreenObj[key].posX);
-    var Rect = img.parentElement.getBoundingClientRect();
+    var Rect = ClassicPages_previewRect(img);
 
     if (!ChatLive_Playing) {
         OSInterface_PlayPause(true);
@@ -1490,7 +1499,7 @@ function Screens_LoadPreviewResult(StreamData, x, y) {
                 }
 
                 var img = Main_getElementById(ScreenObj[x].ids[1] + ScreenObj[x].posY + '_' + ScreenObj[x].posX);
-                var Rect = img.parentElement.getBoundingClientRect();
+                var Rect = ClassicPages_previewRect(img);
 
                 OSInterface_StartScreensPlayer(
                     Play_PreviewURL,
@@ -2098,13 +2107,9 @@ function Screens_KeyLeftRight(y, x, key) {
 }
 
 function Screens_OpenSidePanel(forceFeed, key) {
-    Screens_RemoveAllFocus(key);
-    if (Main_values.Main_Go === Main_aGame) {
-        Main_values.Main_OldGameSelected = Main_values.Main_gameSelected_id;
-    }
+    if (key === Main_aGame) Main_values.Main_OldGameSelected = Main_values.Main_gameSelected_id;
     Screens_ClearAnimation(key);
-    Main_removeEventListener('keydown', ScreenObj[key].key_fun);
-    Sidepannel_Start(ScreenObj[key].key_fun, forceFeed);
+    ClassicShell_focusNav();
 }
 
 function Screens_RemoveAllFocus(key) {
@@ -2197,6 +2202,7 @@ function Screens_handleKeyDown(key, event) {
     if (Main_CantClick()) return;
 
     Main_keyClickDelayStart();
+    if (ClassicShell_screenKey(key, event)) return;
 
     switch (event.keyCode) {
         case KEY_MEDIA_REWIND:

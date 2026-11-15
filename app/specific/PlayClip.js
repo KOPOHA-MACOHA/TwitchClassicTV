@@ -745,11 +745,15 @@ function PlayClip_CheckPreviewClip() {
 }
 
 function PlayClip_handleKeyDown(e) {
+    if (PlayClassic_isOpen()) { PlayClassic_handleKeyDown(e); return; }
     //console.log('PlayClip_handleKeyDown', e.keyCode);
 
     if (!PlayClip_isOn || !Main_isScene2DocVisible()) {
         return;
     }
+
+    if (PlayClassic_revealOnInput(e, 3)) return;
+    if (PlayClassic_navigateRow(e, 3)) return;
 
     Play_screeOn();
 
@@ -861,7 +865,7 @@ function PlayClip_handleKeyDown(e) {
                 if (!PlayVod_PanelY) {
                     if (PlayVod_IsJumping) PlayVod_jump();
                 } else if (PlayVod_PanelY === 1) PlayClip_Enter();
-                else Play_BottomOptionsPressed(3);
+                else Play_BottomOptionsPressed(3, e);
                 PlayClip_setHidePanel();
             } else if (UserLiveFeed_isPreviewShowing()) {
                 if (UserLiveFeed_DataObj[UserLiveFeed_FeedPosX][UserLiveFeed_FeedPosY[UserLiveFeed_FeedPosX]].image) {

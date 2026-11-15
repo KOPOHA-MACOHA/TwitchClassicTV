@@ -1184,7 +1184,7 @@ function UserLiveFeedobj_CreateVodFeed(pos, x, id, data, Extra_when, Extra_until
         data[2] +
         '</div><div class="stream_info_live" style="width: 26%; display: inline-block; float: right; text-align: right;">' +
         Play_timeS(data[11]) +
-        '</div></div><div class="stream_info_live_title" style="font-family: \'Roboto\';">' +
+        '</div></div><div class="stream_info_live_title" style="font-family: \'Inter\';">' +
         data[4] +
         Main_GetViewsStrings(data[13]) +
         (Extra_when ? ', ' + STR_WATCHED + Main_videoCreatedAtWithHM(Extra_when) + STR_SPACE_HTML + STR_UNTIL + Play_timeS(Extra_until) : '') +

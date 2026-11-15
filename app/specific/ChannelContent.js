@@ -47,6 +47,8 @@ var ChannelContent_allowMature;
 //Variable initialization end
 
 function ChannelContent_init() {
+    ChannelClassic_active = true; ChannelClassic_clearTabs();
+    document.body.classList.add('classic-channel-page-open');
     Main_values.Main_CenterLablesVectorPos = 1;
     Main_values.Main_Go = Main_ChannelContent;
 
@@ -89,6 +91,8 @@ function ChannelContent_init() {
 }
 
 function ChannelContent_exit() {
+    ChannelClassic_active = false;
+    document.body.classList.remove('classic-channel-page-open');
     Main_RestoreTopLabel();
     Main_removeEventListener('keydown', ChannelContent_handleKeyDown);
     Main_HideElement('channel_content_scroll');
@@ -223,6 +227,7 @@ function ChannelContent_setFollow() {
                 (AddUser_UserIsSet() ? STR_FOLLOW : STR_NOKEY)
         );
     }
+    ChannelClassic_syncFollow();
 }
 
 function ChannelContent_loadDataSuccess() {
@@ -368,6 +373,7 @@ function ChannelContent_loadDataSuccessFinish() {
         Main_HideLoadDialog();
         Main_SaveValues();
     }
+    ChannelClassic_render();
     ChannelContent_checkUser();
     Main_FirstLoad = false;
     if (Main_FirstRun) Screens_loadDataSuccessFinishEnd();
@@ -385,6 +391,7 @@ function ChannelContent_checkUser() {
 }
 
 function ChannelContent_addFocus() {
+    if (ChannelClassic_active) { ChannelClassic_focus(); return; }
     if (ChannelContent_cursorY) {
         Main_AddClass('channel_content_thumbdiv0_0', Main_classThumb);
         ChannelContent_LoadPreview();
@@ -556,6 +563,7 @@ function ChannelContent_handleKeyBakc() {
 }
 
 function ChannelContent_handleKeyDown(event) {
+    if (ChannelClassic_active) { ChannelClassic_key(event); return; }
     if (Main_FirstLoad || Main_CantClick()) return;
 
     Main_keyClickDelayStart();

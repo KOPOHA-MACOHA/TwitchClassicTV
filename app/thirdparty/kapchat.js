@@ -28,6 +28,8 @@ function emoteURLFromObj(obj, replaceDark) {
 }
 
 function emoteTemplate(url, srcset) {
+    url = ClassicFeatures_proxyUrl(url);
+    if (srcset && ClassicFeatures_enabled('emote_proxy')) srcset = srcset.replace(/https?:\/\/[^\s,]+/g, ClassicFeatures_proxyUrl);
     return (
         '<img class="emoticon" alt="" ' +
         (srcset ? 'srcset="' + srcset + '"' : '') +

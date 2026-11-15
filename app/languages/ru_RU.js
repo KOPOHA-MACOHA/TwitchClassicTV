@@ -20,6 +20,16 @@
 
 //Spacing for release maker not trow errors from jshint
 function ru_RULang() {
+    STR_QR_LOGIN_EXPIRED = "Код истёк. Нажмите OK, чтобы получить новый QR-код.";
+    STR_CLASSIC_VIDEO = "Видео";
+    STR_CLASSIC_MORE = "Дополнительно";
+    STR_CLASSIC_HINT = "Вверх/Вниз — выбор · OK — открыть · Назад — назад";
+    STR_CLASSIC_EMPTY = "Для этой трансляции нет доступных настроек";
+    STR_CLASSIC_PLAYER = "Классический интерфейс плеера";
+    STR_CLASSIC_PLAYER_SUMMARY = "Короткая панель плеера с настройками по разделам. Выключите для возврата полной панели.";
+    STR_QR_LOGIN_TITLE = "Войти в Twitch";
+    STR_QR_LOGIN_SCAN = "Отсканируйте QR-код телефоном и подтвердите вход на Twitch.";
+    STR_QR_LOGIN_ALTERNATIVE = "Или откройте twitch.tv/activate и введите код:";
     // This is a false/true var change if day comes first in your language eg (27/12/2010) day 27 month 12 year 2010
     //Then copy this and set it to true, if doesn't don't copy it
     Main_IsDayFirst = true;

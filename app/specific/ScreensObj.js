@@ -25,8 +25,8 @@ var Main_ItemsLimitMax = 100;
 var Main_ReloadLimitOffsetGames = 1.35;
 var Main_ReloadLimitOffsetVideos = 1.5;
 
-var Main_ItemsLimitVideo = 30;
-var Main_ColumnsCountVideo = 3;
+var Main_ItemsLimitVideo = 32;
+var Main_ColumnsCountVideo = 4;
 var Main_ItemsReloadLimitVideo = Math.floor(Main_ItemsLimitVideo / Main_ColumnsCountVideo / Main_ReloadLimitOffsetVideos);
 
 var Main_ItemsLimitGame = 30;
@@ -2823,6 +2823,7 @@ function ScreensObj_Blocked() {
 function ScreensObj_addSwitches(StringsArray, key, padding) {
     ScreenObj[key].TopRowCreated = true;
     ScreenObj[key].row = document.createElement('div');
+    ScreenObj[key].row.className = 'classic-filter-tabs';
 
     if (padding) {
         ScreenObj[key].row.style.paddingBottom = padding;
@@ -2834,7 +2835,7 @@ function ScreensObj_addSwitches(StringsArray, key, padding) {
         len = StringsArray.length;
 
     for (i; i < len; i++) {
-        thumbfollow = '<i class="icon-' + ScreenObj[key].SwitchesIcons[i] + ' stream_channel_follow_icon"></i>' + StringsArray[i];
+        thumbfollow = ClassicPages_tabLabel(StringsArray[i]);
         div = document.createElement('div');
         div.setAttribute('id', ScreenObj[key].ids[3] + 'y_' + i);
         div.className = 'stream_cell_period';
@@ -2853,6 +2854,7 @@ function ScreensObj_addSwitches(StringsArray, key, padding) {
         ScreenObj[key].row.appendChild(div);
     }
     ScreenObj[key].tableDoc.appendChild(ScreenObj[key].row);
+    ClassicPages_filterLabels(key);
 }
 
 function ScreensObj_addBanner(obj, key, forceAdd) {
@@ -2987,6 +2989,7 @@ function ScreensObj_CheckUser(key) {
 }
 
 function ScreensObj_SetTopLable(text, small_text) {
+    if (document.getElementById("classic_nav")) ClassicShell_syncNav();
     Main_innerHTML(
         'top_lable',
         text + STR_SPACE_HTML + (small_text ? '<div style="font-size: 65%;display: inline-block;">' + small_text + '</div>' : '')

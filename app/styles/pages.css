@@ -1,0 +1,508 @@
+/* Flow-based pages and thumbnail geometry; GPL-3.0-or-later. */
+.classic-following-page {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    padding: 0.4vh 0.4vw 4vh;
+    scrollbar-width: none;
+    box-sizing: border-box;
+}
+.following-section {
+    margin: 0 0 4vh;
+}
+.following-section h2 {
+    font:
+        500 2.8vh/1.4 Inter,
+        Arial;
+    margin: 0 0 1.8vh;
+}
+.following-live-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.5vw;
+}
+.following-stream-card,
+.following-channel-card {
+    border: 0.28vh solid transparent;
+    border-radius: 1.08vh;
+    padding: 0.6vh;
+    background: transparent;
+    color: #efeff1;
+    text-align: left;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.following-stream-card:focus,
+.following-channel-card:focus,
+.following-stream-card.is-focused,
+.following-channel-card.is-focused {
+    outline: none;
+    border-color: #a970ff;
+    background: #1f1f23;
+}
+.following-card-frame {
+    position: relative;
+    aspect-ratio: 16/9;
+    border-radius: 0.8vh;
+    overflow: hidden;
+    background: #26262c;
+}
+.following-thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.following-live-badge {
+    position: absolute;
+    top: 1vh;
+    left: 0.7vw;
+    display: inline-block;
+    padding: 0.2vh 0.4vw;
+    border-radius: 0.3vh;
+    background: #eb0400;
+    font:
+        600 1.4vh Inter,
+        Arial;
+}
+.following-stream-title,
+.following-stream-channel,
+.following-stream-meta {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.following-stream-title {
+    font:
+        500 2.1vh/1.4 Inter,
+        Arial;
+    margin-top: 1vh;
+}
+.following-stream-channel {
+    font:
+        1.9vh/1.4 Inter,
+        Arial;
+    color: #adadb8;
+    margin-top: 0.4vh;
+}
+.following-stream-meta {
+    font:
+        1.65vh/1.4 Inter,
+        Arial;
+    color: #adadb8;
+    margin-top: 0.4vh;
+}
+.following-offline-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1.3vw;
+}
+.following-channel-card {
+    padding: 1.5vh 0.7vw;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+.following-avatar {
+    width: 8vh;
+    height: 8vh;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.following-channel-card strong {
+    font:
+        500 2vh/1.4 Inter,
+        Arial;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 1vh 0 0.4vh;
+}
+.following-channel-card small {
+    font:
+        1.6vh/1.4 Inter,
+        Arial;
+    color: #adadb8;
+}
+.following-status {
+    font:
+        2vh Inter,
+        Arial;
+    color: #adadb8;
+    padding: 2vh 0;
+}
+.following-retry {
+    background: #303036;
+    color: #efeff1;
+    border: 2px solid transparent;
+    border-radius: 0.6vh;
+    padding: 1.5vh 1vw;
+    font:
+        2vh Inter,
+        Arial;
+}
+.following-retry:focus {
+    border-color: #a970ff;
+    outline: none;
+}
+.classic-shell #stream_table_channel_content {
+    display: none !important;
+}
+.classic-channel-page {
+    height: 100%;
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 0 1vw 4vh 0;
+    scrollbar-width: none;
+}
+.classic-channel-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+    margin: 0 0 2.5vh;
+}
+.classic-channel-avatar {
+    width: 9vh;
+    height: 9vh;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.classic-channel-identity {
+    min-width: 0;
+    max-width: 75vw;
+}
+.classic-channel-identity h1 {
+    font:
+        600 3.4vh/1.3 Inter,
+        Arial;
+    margin: 0;
+}
+.classic-channel-identity p {
+    font:
+        1.9vh/1.4 Inter,
+        Arial;
+    color: #adadb8;
+    max-height: 2.8em;
+    overflow: hidden;
+    margin: 0.7vh 0 0;
+}
+.classic-channel-tabs {
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+    height: 6vh;
+    border-bottom: 1px solid #35353b;
+    box-sizing: border-box;
+}
+.classic-channel-tab {
+    height: 100%;
+    padding: 1vh 1.2vw;
+    background: transparent;
+    border: 0;
+    border-bottom: 0.35vh solid transparent;
+    color: #adadb8;
+    font:
+        500 2.2vh/1.4 Inter,
+        Arial;
+    box-sizing: border-box;
+}
+.classic-channel-tab.active {
+    color: #bf94ff;
+    border-bottom-color: #9146ff;
+}
+.classic-channel-tab:focus,
+.classic-channel-tab.is-focused {
+    outline: none;
+    background: #26262c;
+    color: #efeff1;
+    border-bottom-color: #a970ff;
+}
+.classic-channel-hero {
+    padding: 4vh 0;
+}
+.classic-channel-hero > h2 {
+    font:
+        500 3vh Inter,
+        Arial;
+}
+.classic-channel-hero > p {
+    font:
+        2.1vh/1.6 Inter,
+        Arial;
+    color: #adadb8;
+}
+.classic-channel-watch {
+    display: flex;
+    gap: 2vw;
+    border: 3px solid transparent;
+    border-radius: 1vh;
+    background: #18181b;
+    color: #efeff1;
+    padding: 1vh;
+    text-align: left;
+    width: 100%;
+}
+.classic-channel-watch:focus {
+    outline: 0;
+    border-color: #a970ff;
+}
+.classic-channel-live-thumb {
+    width: 47vw;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    border-radius: 0.8vh;
+}
+.classic-channel-live-copy {
+    position: relative;
+    padding: 5vh 1vw;
+    min-width: 0;
+}
+.classic-channel-live-copy h2 {
+    font:
+        500 2.8vh/1.4 Inter,
+        Arial;
+}
+.classic-channel-live-copy p {
+    font:
+        2vh Inter,
+        Arial;
+    color: #adadb8;
+}
+.classic-channel-live-copy strong {
+    display: inline-block;
+    margin-top: 2vh;
+    background: #9146ff;
+    border-radius: 0.5vh;
+    padding: 1.2vh 1vw;
+    font:
+        2vh Inter,
+        Arial;
+}
+#classic_channel_tabs {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: #0e0e10;
+}
+.classic-channel-grid #screens_holder > .screen_holder_switch {
+    top: 7vh;
+    height: calc(100% - 7vh);
+}
+.classic-shell .classic-filter-tabs {
+    display: flex;
+    gap: 1.5vw;
+    align-items: center;
+    height: 6.5vh;
+    min-height: 6.5vh;
+    position: relative;
+    z-index: 5;
+    padding: 0 0 1vh !important;
+    box-sizing: border-box;
+}
+.classic-shell .classic-filter-tabs .stream_cell_period {
+    position: static;
+    display: block;
+    float: none;
+    width: auto;
+    height: auto;
+    font-size: 2vh;
+    margin: 0;
+    padding: 0;
+}
+.classic-shell .classic-filter-tabs .stream_thumbnail_channel_vod {
+    position: static;
+    height: auto;
+    min-height: 4.2vh;
+    width: auto;
+    padding: 0;
+    margin: 0;
+    background: #18181b;
+    border: 2px solid transparent;
+    border-radius: 0.5vh;
+    box-sizing: border-box;
+}
+.classic-shell .classic-filter-tabs .stream_channel_follow_game {
+    position: static;
+    width: auto;
+    transform: none;
+    margin: 0;
+    padding: 0.8vh 1.1vw;
+    font:
+        500 1.9vh/1.3 Inter,
+        Arial;
+    text-shadow: none;
+    color: #adadb8;
+}
+.classic-shell .classic-filter-tabs .stream_switch_focused {
+    border-color: #a970ff !important;
+    background: #29292e;
+}
+.classic-shell #screens_holder .animate_height_transition,
+.classic-shell #screens_holder .animate_height_transition_games {
+    height: auto !important;
+}
+.classic-shell #screens_holder .classic-video-card .stream_thumbnail_live {
+    height: auto;
+    padding: 0;
+    background: transparent;
+}
+.classic-shell #screens_holder .classic-video-card .stream_thumbnail_live_img {
+    box-sizing: border-box;
+    border: 0.28vh solid transparent;
+    border-radius: 1.08vh;
+    padding-bottom: calc(56.25% - 0.315vh);
+    background: #26262c;
+    overflow: hidden;
+}
+.classic-shell #screens_holder .classic-video-card .stream_img {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.8vh;
+}
+.classic-shell #screens_holder .classic-video-card .stream_thumbnail_live_img::before,
+.classic-shell #screens_holder .classic-video-card .stream_thumbnail_live_img::after {
+    content: none !important;
+}
+.classic-shell #screens_holder .classic-video-card .stream_thumbnail_focused .stream_thumbnail_live_img {
+    border-color: #a970ff;
+    outline: none;
+}
+.classic-thumbnail-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font:
+        1.8vh Inter,
+        Arial;
+    color: #777780;
+}
+.classic-card-copy {
+    padding: 1vh 0.2vw 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35vh;
+    min-width: 0;
+}
+.classic-card-title,
+.classic-card-channel,
+.classic-card-game {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.classic-card-title {
+    font:
+        500 2.1vh/1.4 Inter,
+        Arial;
+    color: #efeff1;
+}
+.classic-card-channel {
+    font:
+        1.9vh/1.4 Inter,
+        Arial;
+    color: #adadb8;
+}
+.classic-card-game {
+    font:
+        1.75vh/1.4 Inter,
+        Arial;
+    color: #adadb8;
+}
+.classic-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6vw;
+    flex-wrap: wrap;
+    font:
+        1.6vh/1.4 Inter,
+        Arial;
+    color: #adadb8;
+    min-height: 2.4vh;
+}
+.classic-card-type {
+    flex-shrink: 0;
+    font-size: 1.3vh;
+    border-radius: 0.3vh;
+    padding: 0.1vh 0.3vw;
+    background: #303036;
+}
+.classic-card-type.is-live {
+    background: #eb0400;
+    color: white;
+}
+.classic-shell #screens_holder .classic-video-card [id*='_views_'] {
+    position: static;
+    display: inline;
+    left: auto;
+    top: auto;
+    max-width: 100%;
+    font: inherit;
+    background: none;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    overflow: visible;
+}
+.classic-hidden-marker {
+    display: none !important;
+}
+.classic-card-duration:empty {
+    display: none;
+}
+.classic-channel-follow {
+    margin-left: auto;
+}
+.classic-channel-tabs .classic-channel-follow {
+    color: #bf94ff;
+}
+
+/* Shared channel identity and tab geometry on Home, Videos and Clips. */
+.classic-shell.classic-channel-page-open #topbar {
+    display: none !important;
+}
+.classic-shell.classic-channel-page-open #screens_holder {
+    top: 12vh;
+    height: 88vh;
+}
+.classic-channel-page {
+    padding-right: 0;
+}
+.classic-channel-chrome {
+    height: 18.5vh;
+    padding-right: 1vw;
+    box-sizing: border-box;
+}
+.classic-channel-chrome .classic-channel-header {
+    height: 11vh;
+    min-height: 11vh;
+    margin-bottom: 1.5vh;
+    overflow: hidden;
+}
+#classic_channel_grid_chrome {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: #0e0e10;
+}
+#classic_channel_grid_chrome #classic_channel_tabs {
+    position: static;
+    background: none;
+}
+.classic-channel-grid #screens_holder > .screen_holder_switch {
+    top: 18.5vh;
+    height: calc(100% - 18.5vh);
+}
+.classic-channel-tab.is-focused {
+    box-shadow: inset 0 0 0 2px #a970ff;
+    border-radius: 0.4vh 0.4vh 0 0;
+}

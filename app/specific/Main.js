@@ -543,6 +543,7 @@ function Main_SetStringsMain() {
     Main_Periods = [STR_CLIP_DAY, STR_CLIP_WEEK, STR_CLIP_MONTH, STR_CLIP_ALL];
 
     Settings_SetSettings();
+    ClassicShell_init();
     Main_Changelog();
 }
 
@@ -759,6 +760,7 @@ function Main_setExitDialog() {
 }
 
 function Main_showExitDialog() {
+    Main_textContent('main_dialog_exit_text', ClassicShell_ru() ? 'Выйти из Twitch Classic?' : 'Exit Twitch Classic?');
     Main_setExitDialog();
     Main_ShowElement('main_dialog_exit');
     Main_PreventClick(true, Main_ExitDialog, true);
@@ -891,6 +893,7 @@ function Main_showWelcomeDialog(removeEventListener, addEventListener) {
             '</div>'
     );
 
+    ClassicShell_welcome();
     Main_ShowElement('welcome_dialog');
 }
 
@@ -1587,6 +1590,7 @@ function Main_showScene1Doc() {
 }
 
 function Main_hideScene1Doc() {
+    if (Main_Scene1Doc.contains(document.activeElement)) document.activeElement.blur();
     Main_Scene1Doc.style.opacity = 0;
 
     Main_Scene1Doc.style.pointerEvents = 'none';
@@ -1683,7 +1687,8 @@ function Main_openStream() {
             Play_HideEndDialog();
         }
 
-        Play_Start();
+        try { Play_Start(); }
+        catch (error) { Main_Log('Live startup failed: ' + error.stack); ClassicPlayback_cancel(true); }
     });
 }
 
@@ -2077,11 +2082,13 @@ function CheckPage(pageUrlCode) {
 }
 
 function BaseXmlHttpGet(theUrl, callbackSuccess, calbackError, key, checkResult, UseHeaders) {
-    var headers;
+    var headers, originalUrl = theUrl;
+    theUrl = ClassicFeatures_proxyUrl(theUrl);
+    if (theUrl !== originalUrl) UseHeaders = false;
 
     if (UseHeaders) {
         if (AddUser_UserHasToken()) {
-            Main_Bearer_User_Headers[1][1] = Bearer + AddUser_UsernameArray[0].access_token;
+            HttpGetSetUserHeader();
 
             headers = Main_Bearer_User_Headers;
         } else {
@@ -2227,6 +2234,10 @@ function FullxmlHttpGet(theUrl, Headers, callbackSuccess, calbackError, key, che
 }
 
 function Main_CheckFullxmlHttpGet(result, key, callbackSuccess, callBackError, checkResult) {
+    if (/^(PlayChannelPoints_|PlayAutoClaim_|PlayRaid_)/.test(callbackSuccess)) {
+        ClassicPlayback_optional(callbackSuccess, function () { eval(callbackSuccess)(JSON.parse(result), key, checkResult); }); // jshint ignore:line
+        return;
+    }
     // prettier-ignore
     eval(callbackSuccess)(// jshint ignore:line
         JSON.parse(result),
@@ -2966,6 +2977,7 @@ var Main_isStopped = false;
 function Main_CheckStop() {
     // Called only by JAVA
     Main_isStopped = true;
+    PlayChannelPoints_WasPlaying = false;
     Main_PreventClick(true, Main_PreventClickfun);
 
     //sync backup, but prevent backup in background

@@ -1312,6 +1312,7 @@ function Play_PlayPauseChange(State, PlayVodClip) {
             Play_hidePanelFull(PlayVodClip);
         }
     } else {
+        PlayChannelPoints_WasPlaying = false;
         if ((PlayVodClip > 1 && !Main_values.Play_ChatForceDisable) || !Main_IsOn_OSInterface) Chat_Pause();
 
         ChatLive_Playing = false;
@@ -1642,6 +1643,7 @@ function Play_MultiKeyDown() {
 }
 
 function Play_handleKeyUp(e) {
+    if (PlayClassic_ignoreKeyUp(e)) return;
     //To test multi dialog
     // var mdoc = Play_CheckLiveThumb();
     // if (mdoc) Play_MultiSetUpdateDialog(mdoc);
@@ -1681,11 +1683,15 @@ function Play_handleKeyUpEndClear() {
 }
 
 function Play_handleKeyDown(e) {
+    if (PlayClassic_isOpen()) { PlayClassic_handleKeyDown(e); return; }
     //console.log('Play_handleKeyDown', e.keyCode);
 
     if (!Play_isOn || !Main_isScene2DocVisible()) {
         return;
     }
+
+    if (PlayClassic_revealOnInput(e, 1)) return;
+    if (PlayClassic_navigateRow(e, 1)) return;
 
     Play_screeOn();
 
@@ -1851,7 +1857,7 @@ function Play_handleKeyDown(e) {
                     if (PlayVod_IsJumping) PlayVod_jump();
                 } else if (PlayVod_PanelY === 1) {
                     if (!Play_isEndDialogVisible()) OSInterface_PlayPauseChange(1);
-                } else Play_BottomOptionsPressed(1);
+                } else Play_BottomOptionsPressed(1, e);
 
                 Play_setHidePanel();
             } else if (Play_MultiDialogVisible()) {
@@ -2027,6 +2033,7 @@ var Play_controlsPreviewVolume = temp_controls_pos++;
 var Play_controlsPreviewMainVolume = temp_controls_pos++;
 var Play_controlsContentLang = temp_controls_pos++;
 var Play_controlsControls = temp_controls_pos++;
+var Play_controlsSettings = temp_controls_pos++;
 
 var Play_controlsDefault = Play_controlsChat;
 var Play_PanelCounter = Play_controlsDefault;
@@ -3980,6 +3987,9 @@ function Play_MakeControls() {
         }
     };
 
+    PlayClassic_defineControl();
+    PlayClassic_applyMode();
+
     var div,
         doc = Main_getElementById('controls_holder'),
         fragment = document.createDocumentFragment(),
@@ -4062,8 +4072,9 @@ function Play_SetControlsArrows(key) {
 }
 
 function Play_SetControlsVisibility(prop) {
+    if (/^(ShowInLive|ShowInVod|ShowInClip|ShowInPP|ShowInMulti|ShowInStay)$/.test(prop)) PlayClassic_context = prop;
     for (var key in Play_controls) {
-        if (Play_controls[key][prop]) Play_BottomShow(key);
+        if (PlayClassic_primary(prop, key, Play_controls[key])) Play_BottomShow(key);
         else Play_BottomHide(key);
     }
 
@@ -4091,12 +4102,17 @@ function Play_KeyChatPosChage() {
     Play_controls[Play_controlsChatPos].setLabel();
 }
 
-function Play_BottomOptionsPressed(PlayVodClip) {
-    if (Play_controls[Play_PanelCounter].enterKey) {
-        Play_controls[Play_PanelCounter].enterKey(PlayVodClip);
-    } else {
-        Play_ResetPanel(PlayVodClip);
+function Play_BottomOptionsPressed(PlayVodClip, event) {
+    if (PlayClassic_enabled() && [Play_controlsQuality, Play_controlsChat, Play_controlsSettings].indexOf(Play_PanelCounter) !== -1) {
+        if (event && event.preventDefault) event.preventDefault();
+        if (Play_PanelCounter === Play_controlsQuality) PlayClassic_quality();
+        else if (Play_PanelCounter === Play_controlsChat) PlayClassic_chat();
+        else PlayClassic_open();
+        if (event) PlayClassic_waitForRelease = true;
+        return;
     }
+    if (Play_controls[Play_PanelCounter].enterKey) Play_controls[Play_PanelCounter].enterKey(PlayVodClip);
+    else Play_ResetPanel(PlayVodClip);
 }
 
 function Play_ResetPanel(PlayVodClip) {
@@ -4107,6 +4123,7 @@ function Play_ResetPanel(PlayVodClip) {
 }
 
 function Play_BottomUpDown(PlayVodClip, adder) {
+    if (PlayClassic_enabled() && Play_PanelCounter === Play_controlsQuality) { if (adder === 1) { PlayVod_PanelY--; Play_BottomIconsFocus(); } return; }
     if (Play_controls[Play_PanelCounter].updown) {
         Play_controls[Play_PanelCounter].updown(adder, PlayVodClip);
     } else if (adder === 1 && (PlayVodClip > 1 || !Play_StayDialogVisible())) {
@@ -4335,6 +4352,7 @@ function Play_BottomIconsFocusClear() {
 }
 
 function Play_BottomIconsFocus(skipInfo, checkjump, skipHide) {
+    if (PlayClassic_enabled()) { PlayClassic_focusActionRow(skipInfo, checkjump); return; }
     if (PlayVod_PanelY < 0) {
         PlayVod_PanelY = 0;
         return;

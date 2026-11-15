@@ -616,21 +616,11 @@ function Chat_loadChatSuccess(responseObj, id) {
             atuser = true;
         }
 
-        //Add nick
-        if (atstreamer || (ChatLive_Highlight_Bits && hasbits) || mod || fromstreamer) {
-            nickColor = chat_Line_highlight_green;
-        } else if (atuser) {
-            nickColor = chat_Line_highlight_blue;
-        } else {
-            if (!ChatLive_Custom_Nick_Color && mmessage.userColor) {
-                nickColor = 'style="color: ' + mmessage.userColor + ';"';
-            } else {
-                nickColor = 'style="color: ' + defaultColors[comments[i].commenter.displayName.charCodeAt(0) % defaultColorsLength] + ';"';
-            }
-        }
+        // Preserve Twitch's stored author colour in recordings as well.
+        nickColor = 'style="color: ' + ClassicChatPresentation_nameColor(mmessage.userColor, comments[i].commenter.id || comments[i].commenter.login || comments[i].commenter.displayName) + ';"';
         div +=
-            '<span ' +
-            (mmessage.is_action ? 'class="class_bold" ' + nickColor : '') +
+            '<span class="classic-chat-nick' +
+            (mmessage.is_action ? ' class_bold' : '') + '" ' +
             nickColor +
             '>' +
             comments[i].commenter.displayName +

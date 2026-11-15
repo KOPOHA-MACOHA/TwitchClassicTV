@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.fgl27.twitch"
+        applicationId "org.tvmod.classic"
 
         minSdkVersion 21
         targetSdkVersion 35

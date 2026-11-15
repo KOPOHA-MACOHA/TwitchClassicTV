@@ -591,6 +591,7 @@ function Sidepannel_SetLastRefreshUpDiv(date) {
 }
 
 function Sidepannel_StartMain() {
+    if (document.getElementById("classic_nav")) { ClassicShell_focusNav(); return; }
     Sidepannel_Hidecenefeed();
     Sidepannel_IsMain = true;
     Sidepannel_MovelDiv.style.transform = 'translateX(' + Sidepannel_FixdefaultMargin + '%)';

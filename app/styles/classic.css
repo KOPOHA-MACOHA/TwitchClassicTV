@@ -1,0 +1,221 @@
+/* Classic player chrome: native SmartTwitchTV controls and state, GPL-3.0-or-later. */
+.classic-player-ui #controls_holder {
+    text-align: right;
+    padding: 2vh 3vw;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    box-sizing: border-box;
+}
+.classic-player-ui #controls_holder .controls_button_holder {
+    width: auto;
+    min-width: 8vw;
+    margin: 0 0.5vw;
+    vertical-align: bottom;
+}
+.classic-player-ui #controls_holder .controls_button {
+    width: 2.4em;
+    height: 1.4em;
+    border-radius: 0.25em;
+}
+.classic-player-ui #controls_holder .controls_text_title_holder {
+    opacity: 1 !important;
+    font-size: 2vh;
+}
+.classic-player-ui #controls_holder .controls_button_title {
+    width: auto;
+    height: auto;
+    left: auto;
+    transform: none;
+    font-size: 1em;
+    line-height: 1.5;
+    white-space: nowrap;
+    max-width: 18vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.classic-player-ui #controls_holder [id^='controls_arrows_'] {
+    display: none !important;
+}
+.classic-player-ui #controls_holder .arrows_text {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+.classic-settings {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 36vw;
+    min-width: 30rem;
+    padding: 5vh 2.5vw;
+    box-sizing: border-box;
+    background: rgba(22, 22, 26, 0.98);
+    color: #efeff1;
+    z-index: 200;
+    font:
+        2.6vh/1.35 Inter, Arial,
+        sans-serif;
+    box-shadow: -20px 0 60px #0006;
+}
+.classic-settings h2 {
+    font-size: 3.5vh;
+    margin: 0 0 1vh;
+}
+.classic-settings > p {
+    color: #adadb8;
+    font-size: 1.9vh;
+    margin: 0 0 3vh;
+}
+#classic_settings_rows {
+    height: 78vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.classic-settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1em;
+    width: 100%;
+    padding: 1.8vh 1.2vw;
+    margin: 0 0 0.7vh;
+    border: 2px solid transparent;
+    border-radius: 0.4em;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+.classic-settings-row:focus {
+    outline: none;
+    border-color: #a970ff;
+    background: #303036;
+}
+.classic-settings-value {
+    color: #adadb8;
+    font-size: 0.85em;
+    max-width: 40%;
+    text-align: right;
+}
+.qr-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5vw;
+    text-align: left;
+    padding: 3vh 0;
+}
+.qr-login-code {
+    width: 30vh;
+    height: 30vh;
+    padding: 2vh;
+    box-sizing: border-box;
+    background: white;
+    border-radius: 1vh;
+    flex-shrink: 0;
+}
+.qr-login-code svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.qr-login-copy {
+    max-width: 44vw;
+    font-size: 2.5vh;
+    line-height: 1.5;
+}
+.qr-login-copy h1 {
+    font-size: 4vh;
+    line-height: 1.2;
+    margin: 0 0 2vh;
+}
+.qr-login-copy p {
+    margin: 0.7em 0;
+}
+.qr-login-url {
+    font-size: 2vh;
+    overflow-wrap: anywhere;
+    color: #bf94ff;
+}
+.qr-login-user-code {
+    font: 4.5vh monospace;
+    letter-spacing: 0.12em;
+    margin: 1vh 0;
+}
+#add_user_text_counter {
+    font-size: 2vh;
+    color: #adadb8;
+}
+.qr-login-error {
+    max-width: 65vw;
+    margin: 5vh auto;
+    text-align: left;
+    font:
+        2.5vh/1.6 Inter,
+        Arial;
+    color: #efeff1;
+}
+.qr-login-error h1 {
+    font-size: 4vh;
+}
+.qr-login-retry {
+    padding: 1.5vh 2vw;
+    margin-top: 2vh;
+    background: #9146ff;
+    border: 2px solid #bf94ff;
+    border-radius: 0.6vh;
+    color: white;
+    font:
+        2.5vh Inter,
+        Arial;
+}
+.classic-settings {
+    width: 39vw;
+    min-width: 0;
+    padding: 4vh 2vw;
+}
+.classic-settings h2 {
+    font:
+        500 3.1vh/1.3 Inter,
+        Arial;
+    margin: 0 0 1.5vh;
+}
+.classic-settings > p {
+    font:
+        1.7vh/1.5 Inter,
+        Arial;
+    margin-bottom: 2vh;
+}
+#classic_settings_rows {
+    height: 79vh;
+    padding: 0.4vh 0.3vw;
+    box-sizing: border-box;
+}
+.classic-settings-row {
+    font:
+        2.3vh/1.4 Inter,
+        Arial;
+    padding: 1.6vh 1vw;
+    min-height: 6.4vh;
+    background: #1f1f23;
+    gap: 1vw;
+}
+.classic-settings-row > span:first-child {
+    min-width: 0;
+    flex: 1;
+    overflow-wrap: anywhere;
+}
+.classic-settings-row:focus {
+    background: #303036;
+    border-color: #a970ff;
+}
+.classic-settings-value {
+    flex-shrink: 0;
+    max-width: 45%;
+    font:
+        1.9vh/1.4 Inter,
+        Arial;
+    overflow-wrap: anywhere;
+}
+.classic-settings-row.is-current .classic-settings-value {
+    color: #bf94ff;
+}

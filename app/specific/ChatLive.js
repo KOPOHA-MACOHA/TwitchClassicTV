@@ -470,16 +470,12 @@ function ChatLive_resetChatters(chat_number) {
 
 function ChatLive_loadChatters(chat_number, id) {
     if (Settings_value.show_chatters.defaultValue) {
-        Main_innerHTML(
-            'chat_loggedin' + chat_number,
-            '...' +
-                (Settings_value.show_chatters.defaultValue === 1 ? (ChatLive_isShared[chat_number] ? STR_IN_SHARED_CHAT : STR_IN_CHAT) : STR_VIEWERS)
-        );
+        ClassicChatPresentation_counter(chat_number, null, Settings_value.show_chatters.defaultValue === 1 ? 'chatters' : 'viewers', Settings_value.show_chatters.defaultValue === 1 ? STR_IN_CHAT : STR_VIEWERS);
         Main_RemoveClass('chat_loggedin' + chat_number, 'hide');
 
-        Main_getElementById('chat_box_holder' + chat_number).style.height = 'calc(100% - 2.9vh)';
+        Main_getElementById('chat_box_holder' + chat_number).style.height = PlayClassic_enabled() ? '' : 'calc(100% - 2.9vh)';
 
-        if (!chat_number) {
+        if (!chat_number && !PlayClassic_enabled()) {
             Main_getElementById('chat_container_name' + chat_number).style.top = '3vh';
         }
 
@@ -522,7 +518,7 @@ function ChatLive_loadChattersViewersSuccess(responseText, chat_number, id) {
             if (resultObj.data && resultObj.data.length) {
                 var viewers = resultObj.data[0].viewer_count;
 
-                Main_innerHTML('chat_loggedin' + chat_number, Main_formatNumber(viewers) + STR_SPACE_HTML + Main_GetViewerStrings(viewers));
+                ClassicChatPresentation_counter(chat_number, viewers, 'viewers', Main_formatNumber(viewers) + STR_SPACE_HTML + Main_GetViewerStrings(viewers));
             }
         }
     } catch (e) {
@@ -552,10 +548,7 @@ function ChatLive_loadChattersSuccess(responseObj, chat_number, id) {
                 var resultObj = JSON.parse(responseObj.responseText);
                 var counter = resultObj.data.channels[0].chatters.count;
 
-                Main_innerHTML(
-                    'chat_loggedin' + chat_number,
-                    Main_formatNumber(counter) + (ChatLive_isShared[chat_number] ? STR_IN_SHARED_CHAT : STR_IN_CHAT)
-                );
+                ClassicChatPresentation_counter(chat_number, counter, 'chatters', Main_formatNumber(counter) + (ChatLive_isShared[chat_number] ? STR_IN_SHARED_CHAT : STR_IN_CHAT));
             }
         } catch (e) {
             Main_Log('ChatLive_loadChattersSuccess ' + e);
@@ -952,7 +945,7 @@ function ChatLive_loadEmotesseven_tv(data, chat_number, isGlobal) {
             srcset = ChatLive_seven_tv_srcset(baseEmoteUrl, emoteUrls);
             chat_div = emoteTemplate(url, srcset);
             id = emote.name + emote.id;
-            chat_div_zero = emote.flags === 256 ? chat_div.replace('emoticon', 'emoticon zero-width-emote') : null;
+            chat_div_zero = (emote.flags & 256) !== 0 ? chat_div.replace('emoticon', 'emoticon zero-width-emote') : null;
 
             extraEmotes[chat_number][emote.name] = {
                 code: emote.name,
@@ -1818,18 +1811,8 @@ function ChatLive_loadChatSuccess(message, chat_number, addToStart) {
 
     //Add nick
     nick = tags['display-name'];
-    if (atstreamer || (ChatLive_Highlight_Bits && hasbits) || mod || fromstreamer) {
-        nickColor = chat_Line_highlight_green;
-    } else if (atuser) {
-        nickColor = chat_Line_highlight_blue;
-    } else {
-        if (!ChatLive_Custom_Nick_Color && typeof tags.color !== 'boolean') {
-            nickColor = 'style="color: ' + tags.color + ';"';
-        } else {
-            nickColor = 'style="color: ' + defaultColors[nick.charCodeAt(0) % defaultColorsLength] + ';"';
-        }
-    }
-    div += '<span ' + (action ? 'class="class_bold" ' : '') + nickColor + '>' + nick + '</span>' + (action ? '' : '&#58;') + '&nbsp;';
+    nickColor = 'style="color: ' + ClassicChatPresentation_nameColor(tags.color, tags['user-id'] || nick) + ';"';
+    div += '<span class="classic-chat-nick' + (action ? ' class_bold' : '') + '" ' + nickColor + '>' + nick + '</span>' + (action ? '' : '&#58;') + '&nbsp;';
 
     div +=
         '<span ' +
@@ -1946,31 +1929,7 @@ function ChatLive_checkEmotes(tags) {
 }
 
 function ChatLive_extraMessageTokenize(tokenizedMessage, chat_number, tags) {
-    var wasArray = false,
-        i = 0,
-        len = tokenizedMessage.length;
-
-    for (i; i < len; i++) {
-        if (!tokenizedMessage[i]) {
-            continue;
-        }
-
-        if (typeof tokenizedMessage[i] === 'string') {
-            if (i && wasArray) {
-                tokenizedMessage[i - 1] = extraMessageTokenize(tokenizedMessage[i], chat_number, tags, tokenizedMessage[i - 1]);
-                tokenizedMessage[i] = '';
-            } else {
-                tokenizedMessage[i] = extraMessageTokenize(tokenizedMessage[i], chat_number, tags);
-            }
-
-            wasArray = false;
-        } else {
-            tokenizedMessage[i] = tokenizedMessage[i][0];
-            wasArray = true;
-        }
-    }
-
-    return tokenizedMessage.join(' '); // twemoji.parse(tokenizedMessage.join(' '), true, true);
+    return ClassicChat_render(tokenizedMessage, chat_number, tags);
 }
 
 function ChatLive_LineAddSimple(message) {

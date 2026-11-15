@@ -480,6 +480,7 @@ function Users_handleKeyDown(event) {
             break;
         case KEY_UP:
             if (Users_isRemoveDialogShown() || Users_isUserDialogShown()) break;
+            if (!Users_cursorY) { ClassicShell_focusNav(); break; }
             if (Users_cursorY) {
                 for (i = 0; i < Users_ColumnsCount; i++) {
                     if (Main_ThumbNull(Users_cursorY - 1, Users_cursorX - i, Users_ids[0])) {

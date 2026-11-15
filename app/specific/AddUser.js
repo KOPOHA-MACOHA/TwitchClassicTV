@@ -22,6 +22,57 @@
 var AddUser_UsernameArray = [];
 var AddUser_UsernameArrayRemoved = {};
 var AddUser_Username = null;
+var AddUser_DeviceCodeExpiresAt = 0;
+var AddUser_CodeRequest = 0;
+var AddUser_RequestPending = false;
+// Android serializes callback names; the dispatchers must be global named functions.
+var AddUser_HttpRequests = {};
+var AddUser_HttpId = 0;
+var AddUser_RequestTimeoutMs = 15000;
+
+function AddUser_http(url, headers, success, failure, method, body) {
+    var id = ++AddUser_HttpId;
+    AddUser_HttpRequests[id] = {generation: AddUser_CodeRequest, success: success, failure: failure};
+    AddUser_HttpRequests[id].timer = window.setTimeout(function () {
+        AddUser_httpFailure(null, 0, id);
+    }, AddUser_RequestTimeoutMs);
+    try {
+        FullxmlHttpGet(url, headers, AddUser_httpSuccess, AddUser_httpFailure, 0, id, method, body);
+    } catch (error) {
+        AddUser_httpFailure(null, 0, id);
+    }
+}
+
+function AddUser_takeRequest(id) {
+    var request = AddUser_HttpRequests[id];
+    if (!request) return null;
+    window.clearTimeout(request.timer);
+    delete AddUser_HttpRequests[id];
+    return request.generation === AddUser_CodeRequest && AddUser_IsInUserScreen() ? request : null;
+}
+
+function AddUser_httpSuccess(result, key, id) {
+    var request = AddUser_takeRequest(id);
+    if (!request) return;
+    try {
+        request.success(result);
+    } catch (error) {
+        AddUser_getCodeError();
+    }
+}
+
+function AddUser_httpFailure(result, key, id) {
+    var request = AddUser_takeRequest(id);
+    if (request) request.failure();
+}
+
+function AddUser_cancelRequests() {
+    Object.keys(AddUser_HttpRequests).forEach(function (id) {
+        window.clearTimeout(AddUser_HttpRequests[id].timer);
+    });
+    AddUser_HttpRequests = {};
+}
+
 //Variable initialization end
 
 function AddUser_init() {
@@ -35,6 +86,11 @@ function AddUser_init() {
 }
 
 function AddUser_exit() {
+    AddUser_CodeRequest++;
+    AddUser_cancelRequests();
+    AddUser_RequestPending = false;
+    AddUser_DeviceCode = null;
+    AddUser_DeviceCodeExpiresAt = 0;
     if (AddUser_UsernameArray.length > 0) Main_values.Main_Go = Main_values.Main_Before;
     else Main_values.Main_Go = Main_values.Main_Before !== Main_Users ? Main_values.Main_Before : Main_Live;
 
@@ -56,11 +112,16 @@ function AddUser_handleKeyBack() {
 
 function AddUser_handleKeyDown(event) {
     if (Main_values.Main_Go !== Main_addUser) return;
+    if (event.preventDefault) event.preventDefault();
 
+    if (event.keyCode === KEY_UP) { ClassicShell_focusNav(); return; }
     switch (event.keyCode) {
         case KEY_KEYBOARD_BACKSPACE:
         case KEY_RETURN:
             AddUser_handleKeyBack();
+            break;
+        case KEY_ENTER:
+            if (!AddUser_DeviceCode || Date.now() >= AddUser_DeviceCodeExpiresAt) AddUser_getCode();
             break;
         default:
             break;
@@ -74,19 +135,27 @@ function AddUser_inputFocus() {
 }
 
 function AddUser_getCode() {
+    if (AddUser_RequestPending) return;
     if (!AddUser_IsInUserScreen()) {
         AddUser_handleKeyBack();
         return;
     }
+    Main_clearTimeout(AddUser_getCodeCheckId);
+    Main_HideElement('add_user_text_holder');
+    Main_showLoadDialog();
     AddUser_DeviceCode = null;
     var theUrl = AddCode_Url + 'device?scopes=' + encodeURIComponent(AddCode_Scopes.join(' ')) + '&client_id=' + AddCode_backup_client_id;
 
-    FullxmlHttpGet(theUrl, null, AddUser_getCodeSuccess, AddUser_getCodeError, 0, 0, 'POST', null);
+    ++AddUser_CodeRequest;
+    AddUser_cancelRequests();
+    AddUser_RequestPending = true;
+    AddUser_http(theUrl, null, AddUser_getCodeSuccess, AddUser_getCodeError, 'POST', null);
 }
 
 var AddUser_DeviceCode = null;
 var AddUser_DeviceCodeTimeout = 5;
 function AddUser_getCodeSuccess(resultObj) {
+    AddUser_RequestPending = false;
     if (!AddUser_IsInUserScreen()) {
         AddUser_handleKeyBack();
         return;
@@ -94,18 +163,18 @@ function AddUser_getCodeSuccess(resultObj) {
 
     if (resultObj.status === 200) {
         var data = JSON.parse(resultObj.responseText);
-        var codeDiv = STR_BR + STR_BR + data.user_code + STR_BR + STR_BR;
-
-        var urlDiv;
-        if (Main_IsOn_OSInterface) {
-            urlDiv = '<div style="color: ' + LINK_COLOR + '; text-decoration:none;">' + data.verification_uri + '</div>';
-        } else {
-            urlDiv = STR_DIV_LINK + DefaultMakeLink(data.verification_uri) + '</div>';
+        if (!data.device_code || !data.user_code) {
+            AddUser_getCodeError();
+            return;
+        }
+        AddUser_DeviceCode = data.device_code;
+        AddUser_DeviceCodeTimeout = Math.max(1, Number(data.interval) || 5);
+        AddUser_DeviceCodeExpiresAt = Date.now() + (Number(data.expires_in) || 1800) * 1000;
+        if (!AddUser_renderCode(data.verification_uri, data.user_code)) {
+            AddUser_getCodeError();
+            return;
         }
 
-        AddUser_DeviceCode = data.device_code;
-
-        Main_innerHTML('add_user_text', STR_ADD_USER_TEXT.replace('%site', urlDiv).replace('%code', codeDiv));
         Main_ShowElement('add_user_text_holder');
         Main_HideLoadDialog();
         AddUser_getCodeCheck(AddUser_DeviceCodeTimeout);
@@ -119,15 +188,43 @@ function AddUser_getCodeSuccess(resultObj) {
 // }
 
 function AddUser_getCodeError() {
+    if (!AddUser_IsInUserScreen()) return;
+    ++AddUser_CodeRequest;
+    AddUser_cancelRequests();
+    AddUser_RequestPending = false;
+    AddUser_DeviceCode = null;
+    AddUser_DeviceCodeExpiresAt = 0;
+    Main_clearTimeout(AddUser_getCodeCheckId);
     Main_HideLoadDialog();
-    Main_showWarningDialog(STR_ADD_ERROR, 7500, true);
-    Main_setTimeout(function () {
-        AddUser_handleKeyBack();
-    }, 3000);
+    Main_ShowElement('add_user_text_holder');
+    var holder = Main_getElementById('add_user_text');
+    holder.replaceChildren();
+    var box = document.createElement('div');
+    box.className = 'qr-login-error';
+    var title = document.createElement('h1');
+    title.textContent = STR_QR_LOGIN_TITLE;
+    box.appendChild(title);
+    var text = document.createElement('p');
+    text.textContent = /^ru/i.test(Settings_AppLang || navigator.language)
+        ? 'Не удалось получить код входа от Twitch. Проверьте подключение к интернету и нажмите OK, чтобы повторить.'
+        : 'Could not get a sign-in code from Twitch. Check your internet connection and press OK to retry.';
+    box.appendChild(text);
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'qr-login-retry';
+    button.textContent = /^ru/i.test(Settings_AppLang || navigator.language) ? 'Повторить' : 'Retry';
+    button.addEventListener('click', AddUser_getCode);
+    box.appendChild(button);
+    holder.appendChild(box);
+    Main_textContent('add_user_text_counter', '');
 }
 
 var AddUser_getCodeCheckId;
 function AddUser_getCodeCheck(counter) {
+    if (AddUser_DeviceCodeExpiresAt && Date.now() >= AddUser_DeviceCodeExpiresAt) {
+        AddUser_codeExpired();
+        return;
+    }
     if (!AddUser_IsInUserScreen()) {
         AddUser_handleKeyBack();
         return;
@@ -165,7 +262,7 @@ function AddUser_getDeviceCode() {
         '&device_code=' +
         AddUser_DeviceCode;
 
-    FullxmlHttpGet(theUrl, null, AddUser_getDeviceCodeSuccess, AddUser_getCodeError, 0, 0, 'POST', null);
+    AddUser_http(theUrl, null, AddUser_getDeviceCodeSuccess, AddUser_getCodeError, 'POST', null);
 }
 
 var AddUser_getDeviceCodeToken;
@@ -184,6 +281,11 @@ function AddUser_getDeviceCodeSuccess(resultObj) {
         data = JSON.parse(resultObj.responseText);
         if (Main_A_includes_B(data.message, 'authorization_pending')) {
             AddUser_getCodeCheck(AddUser_DeviceCodeTimeout);
+        } else if (Main_A_includes_B(data.message, 'slow_down')) {
+            AddUser_DeviceCodeTimeout += 5;
+            AddUser_getCodeCheck(AddUser_DeviceCodeTimeout);
+        } else if (Main_A_includes_B(data.message, 'expired')) {
+            AddUser_codeExpired();
         } else {
             AddUser_getCodeError();
         }
@@ -205,7 +307,7 @@ function AddUser_getUserToken() {
 
     var theUrl = Main_helix_api + 'users';
 
-    FullxmlHttpGet(theUrl, header, AddUser_getUserTokenSuccess, noop_fun, 0, 0, null, null);
+    AddUser_http(theUrl, header, AddUser_getUserTokenSuccess, AddUser_getCodeError, null, null);
 }
 
 function AddUser_getUserTokenSuccess(resultObj) {
@@ -540,4 +642,64 @@ function AddUser_IsUserSet() {
 
 function AddUser_IsInUserScreen() {
     return Main_values.Main_Go === Main_addUser;
+}
+
+// Render QR locally: only Twitch's verification URL is encoded, never an access token.
+function AddUser_renderCode(verificationUri, userCode) {
+    var url;
+    try {
+        url = new URL(verificationUri);
+    } catch (e) {
+        return false;
+    }
+    if (
+        (url.origin !== 'https://www.twitch.tv' && url.origin !== 'https://twitch.tv') ||
+        url.username ||
+        url.password ||
+        url.pathname !== '/activate' ||
+        url.href.length > 512
+    )
+        return false;
+    var holder = Main_getElementById('add_user_text');
+    holder.replaceChildren();
+    var layout = document.createElement('div');
+    layout.className = 'qr-login';
+    var qrHolder = document.createElement('div');
+    qrHolder.className = 'qr-login-code';
+    var qr = qrcode(0, 'M');
+    qr.addData(url.href);
+    qr.make();
+    qrHolder.innerHTML = qr.createSvgTag({cellSize: 5, margin: 4, scalable: true});
+    qrHolder.querySelector('svg').setAttribute('aria-label', STR_QR_LOGIN_SCAN);
+    var copy = document.createElement('div');
+    copy.className = 'qr-login-copy';
+    var title = document.createElement('h1');
+    title.textContent = STR_QR_LOGIN_TITLE;
+    copy.appendChild(title);
+    var scan = document.createElement('p');
+    scan.textContent = STR_QR_LOGIN_SCAN;
+    copy.appendChild(scan);
+    var alternative = document.createElement('p');
+    alternative.textContent = STR_QR_LOGIN_ALTERNATIVE;
+    copy.appendChild(alternative);
+    var code = document.createElement('div');
+    code.className = 'qr-login-user-code';
+    code.textContent = userCode;
+    copy.appendChild(code);
+    var link = document.createElement('div');
+    link.className = 'qr-login-url';
+    link.textContent = 'twitch.tv/activate';
+    copy.appendChild(link);
+    layout.appendChild(qrHolder);
+    layout.appendChild(copy);
+    holder.appendChild(layout);
+    return true;
+}
+function AddUser_codeExpired() {
+    AddUser_DeviceCode = null;
+    AddUser_CodeRequest++;
+    Main_clearTimeout(AddUser_getCodeCheckId);
+    Main_textContent('add_user_text_counter', STR_QR_LOGIN_EXPIRED);
+    var qr = document.querySelector('.qr-login-code');
+    if (qr) qr.style.opacity = '.15';
 }

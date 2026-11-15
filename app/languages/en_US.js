@@ -20,6 +20,16 @@
 
 //Spacing for release maker not trow errors from jshint
 function en_USLang() {
+    STR_QR_LOGIN_EXPIRED = "Code expired. Press OK for a new QR code.";
+    STR_CLASSIC_VIDEO = "Video";
+    STR_CLASSIC_MORE = "More options";
+    STR_CLASSIC_HINT = "Up/Down: choose · OK: open · Back: previous menu";
+    STR_CLASSIC_EMPTY = "No options available for this stream";
+    STR_CLASSIC_PLAYER = "Classic player interface";
+    STR_CLASSIC_PLAYER_SUMMARY = "A short player toolbar with grouped settings. Turn off to restore the full toolbar.";
+    STR_QR_LOGIN_TITLE = "Sign in to Twitch";
+    STR_QR_LOGIN_SCAN = "Scan the QR code with your phone and confirm sign-in on Twitch.";
+    STR_QR_LOGIN_ALTERNATIVE = "Or open twitch.tv/activate and enter this code:";
     // This is a false/true var change if day comes first in your language eg (27/12/2010) day 27 month 12 year 2010
     //Then copy this and set it to true, if doesn't don't copy it
     Main_IsDayFirst = false;

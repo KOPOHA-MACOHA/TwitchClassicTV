@@ -1,0 +1,37 @@
+[
+  {
+    "file": "Inter-latin.woff2",
+    "source": "https://assets.twitch.tv/assets/inter-latin-variable-wghtOnly-normal-383d894ed1f69dd95820.woff2",
+    "sha256": "f6789b1579e3915acc50ce2f56d956c05dc3186238eb4d1a0d4ad1e403a625ac"
+  },
+  {
+    "file": "Inter-latin-ext.woff2",
+    "source": "https://assets.twitch.tv/assets/inter-latin-ext-variable-wghtOnly-normal-67b34c7aa6f27e48a065.woff2",
+    "sha256": "4d72155967d9a17d9aeaa7644f85f362257372842df094ae7ae9aad643a2ea33"
+  },
+  {
+    "file": "Inter-cyrillic.woff2",
+    "source": "https://assets.twitch.tv/assets/inter-cyrillic-variable-wghtOnly-normal-6f38ebbb2587f3cc50d7.woff2",
+    "sha256": "44dad9f4b5fa756012db12dae57c0c691e2ab717639956bdac4f308b58174c35"
+  },
+  {
+    "file": "Inter-cyrillic-ext.woff2",
+    "source": "https://assets.twitch.tv/assets/inter-cyrillic-ext-variable-wghtOnly-normal-39fb6b9a2bf03fb4233a.woff2",
+    "sha256": "759f394cae8ddff59d991e622b5c4449142b96a35648a40ac6da8980d7273f05"
+  },
+  {
+    "file": "Inter-greek.woff2",
+    "source": "https://assets.twitch.tv/assets/inter-greek-variable-wghtOnly-normal-437c5811bd5ec1a49373.woff2",
+    "sha256": "f7f0f20d3474118c65819d604cdb8ca2000f3951c1466ba3482bf80a6c21323e"
+  },
+  {
+    "file": "Inter-greek-ext.woff2",
+    "source": "https://assets.twitch.tv/assets/inter-greek-ext-variable-wghtOnly-normal-fc801027c1a9683d0098.woff2",
+    "sha256": "cb97f503c2af0d106f1cc30a4ffd78341d8dfb6278d629abbde4484159d92483"
+  },
+  {
+    "file": "Inter-vietnamese.woff2",
+    "source": "https://assets.twitch.tv/assets/inter-vietnamese-variable-wghtOnly-normal-6ac2a69701b6a9cbd7aa.woff2",
+    "sha256": "913342cd5c6fa7132e6dfdc64dfe79a6a63e737c0b0e3336fb7e518b701e9e5f"
+  }
+]
