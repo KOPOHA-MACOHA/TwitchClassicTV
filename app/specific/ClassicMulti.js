@@ -137,6 +137,11 @@ function ClassicMulti_render() {
     header.appendChild(ClassicPages_el('h1', '', ClassicMulti_words('Мультистрим', 'Multistream')));
     ClassicMulti_button(header, 'close', ClassicMulti_words('Готово', 'Done'), ClassicMulti_close);
     panel.appendChild(header);
+    if (ClassicMulti.error) {
+        var notice = ClassicPages_el('p', 'classic-multi-error', ClassicMulti.error);
+        notice.setAttribute('role', 'status');
+        panel.appendChild(notice);
+    }
     var body = ClassicPages_el('div', 'classic-multi-body'),
         aside = ClassicPages_el('aside', 'classic-multi-aside');
     aside.appendChild(ClassicPages_el('h2', '', ClassicMulti_words('Окна', 'Windows')));
@@ -232,16 +237,20 @@ function ClassicMulti_render() {
                 'p',
                 'classic-multi-target',
                 ClassicMulti_words(
-                    'Максимальное качество выбирается отдельно от режима «картинка в картинке». Автоматический поток зависит от сети и возможностей телевизора.',
-                    'Independent of picture-in-picture limits. Automatic quality depends on the network and TV capabilities.'
+                    'Стандартное качество использует профиль малых окон из настроек. Повышайте предел вручную, если телевизор справляется с несколькими эфирами.',
+                    'Standard quality uses the configured small-window profile. Raise the ceiling manually if your TV can decode multiple streams.'
                 )
             )
         );
-        [0, 1080, 720, 480].forEach(function (limit) {
+        [-1, 0, 1080, 720, 480].forEach(function (limit) {
             var b = ClassicMulti_button(
                 content,
                 'limit:' + limit,
-                (limit ? limit + 'p' : ClassicMulti_words('Без ограничения', 'No ceiling')) + (limit === ClassicMulti.qualityLimit ? ' ✓' : ''),
+                (limit === -1
+                    ? ClassicMulti_words('Стандартное', 'Standard')
+                    : limit
+                      ? limit + 'p'
+                      : ClassicMulti_words('Без ограничения', 'No ceiling')) + (limit === ClassicMulti.qualityLimit ? ' ✓' : ''),
                 function () {
                     ClassicMulti.qualityLimit = limit;
                     Main_setItem('classic_multi_quality', String(limit));
@@ -311,7 +320,7 @@ function ClassicMulti_render() {
         button.appendChild(ClassicPages_el('small', '', stream.title));
     });
     content.appendChild(grid);
-    if (ClassicMulti.loading || ClassicMulti.error || !ClassicMulti.streams.length)
+    if (ClassicMulti.loading || (!ClassicMulti.error && !ClassicMulti.streams.length))
         content.appendChild(
             ClassicPages_el(
                 'p',
@@ -457,6 +466,7 @@ function ClassicMulti_result(response, slot, id, failure) {
     ClassicMulti_cancelPending();
     Play_MultiArray[slot] = JSON.parse(JSON.stringify(Play_data_base));
     Play_MultiArray[slot].data = ScreensObj_LiveCellArray(request.stream);
+    Play_MultiArray[slot].classicRaisedQuality = ClassicMulti.qualityLimit === 0 || ClassicMulti.qualityLimit > 720;
     Play_MultiStartQualitySuccess(slot, result.url, result.responseText);
     ClassicMulti_applyChat();
     ClassicMulti.selected = Play_MultiFirstClear();
@@ -520,9 +530,17 @@ function ClassicMulti_prepare() {
     ClassicMulti.entered = true;
     ClassicMulti.chatChannel = null;
     ClassicMulti.savedChatEnabled = Play_ChatEnable;
+    // 0.14 enabled unlimited decoding implicitly. Migrate that release back to
+    // the device's known working profile; higher ceilings require a new choice.
+    if (localStorage.getItem('classic_multi_quality_migration_015') !== 'true') {
+        Main_setItem('classic_multi_quality', '-1');
+        Main_setItem('classic_multi_chat', 'true');
+        Main_setItem('classic_multi_quality_migration_015', 'true');
+    }
     ClassicMulti.chatWanted = localStorage.getItem('classic_multi_chat') !== 'false';
-    ClassicMulti.qualityLimit = Number(localStorage.getItem('classic_multi_quality') || 0);
-    if ([0, 1080, 720, 480].indexOf(ClassicMulti.qualityLimit) === -1) ClassicMulti.qualityLimit = 0;
+    var savedLimit = localStorage.getItem('classic_multi_quality');
+    ClassicMulti.qualityLimit = savedLimit === null ? -1 : Number(savedLimit);
+    if ([-1, 0, 1080, 720, 480].indexOf(ClassicMulti.qualityLimit) === -1) ClassicMulti.qualityLimit = -1;
     ClassicMulti.savedChat = {
         width: Play_chat_container.style.width,
         height: Play_chat_container.style.height,
@@ -602,16 +620,62 @@ function ClassicMulti_setLayout(big) {
     if (ClassicMulti.active) ClassicMulti_render();
 }
 function ClassicMulti_applyQuality(restart) {
-    // The upstream "small player" defaults cap all four multistream windows at
-    // 720p / 3 Mbps. Use a separate multistream ceiling, unbounded by default.
-    OSInterface_SetSmallPlayerBitrate(0, ClassicMulti.qualityLimit || 0);
+    if (ClassicMulti.qualityLimit === -1) Settings_SetResBitRateMin();
+    else OSInterface_SetSmallPlayerBitrate(0, ClassicMulti.qualityLimit || 0);
     if (restart)
         for (var i = 0; i < 4; i++)
-            if (Play_MultiArray[i].data.length && Play_MultiArray[i].AutoUrl && Play_MultiArray[i].playlist)
+            if (Play_MultiArray[i].data.length && Play_MultiArray[i].AutoUrl && Play_MultiArray[i].playlist) {
+                Play_MultiArray[i].classicRaisedQuality = ClassicMulti.qualityLimit === 0 || ClassicMulti.qualityLimit > 720;
+                Play_MultiArray[i].classicStandardRetry = false;
                 OSInterface_StartMultiStream(i, Play_MultiArray[i].AutoUrl, Play_MultiArray[i].playlist, true);
+            }
 }
 function ClassicMulti_qualityLabel() {
+    if (ClassicMulti.qualityLimit === -1) return ClassicMulti_words('Стандартное', 'Standard');
     return ClassicMulti.qualityLimit
         ? (ClassicShell_ru() ? 'До ' : 'Up to ') + ClassicMulti.qualityLimit + 'p'
         : ClassicMulti_words('Без ограничения', 'No ceiling');
+}
+
+// The native bridge can report a failed decoder after StartMultiStream returns.
+// Retry an explicitly raised ceiling once with the standard device profile.
+function ClassicMulti_playerFailed(slot, type, code) {
+    var entry = Play_MultiArray[slot];
+    if (!entry || !entry.data.length) return false;
+    if (type && slot > 0) {
+        Main_setItem(
+            'classic_multi_last_failure',
+            JSON.stringify({slot: slot + 1, type: type, code: Number(code) || 0, limit: ClassicMulti.qualityLimit, time: Date.now()})
+        );
+        if (
+            !entry.classicStandardRetry &&
+            (entry.classicRaisedQuality || ClassicMulti.qualityLimit === 0 || ClassicMulti.qualityLimit > 720) &&
+            entry.AutoUrl &&
+            entry.playlist
+        ) {
+            entry.classicStandardRetry = true;
+            ClassicMulti.qualityLimit = -1;
+            Main_setItem('classic_multi_quality', '-1');
+            ClassicMulti_applyQuality(false);
+            ClassicMulti.error = ClassicMulti_words(
+                'После ошибки плеера качество возвращено к стандартному. Окно перезапущено.',
+                'Quality has been reset to standard after a player error. The window was restarted.'
+            );
+            OSInterface_StartMultiStream(slot, entry.AutoUrl, entry.playlist, true);
+            if (ClassicMulti.active) ClassicMulti_render();
+            return true;
+        }
+        ClassicMulti.error =
+            ClassicMulti_words('Не удалось запустить видео в окне ', 'Could not start video in window ') +
+            (slot + 1) +
+            (code ? ' (' + String(code) + ')' : '') +
+            '. ' +
+            ClassicMulti_words('Основная трансляция продолжает работать.', 'The main stream is still playing.');
+    }
+    // The upstream failure handler clears the slot synchronously, including
+    // early-return paths. Refresh the picker only after that state change.
+    setTimeout(function () {
+        if (ClassicMulti.active) ClassicMulti_render();
+    }, 0);
+    return false;
 }

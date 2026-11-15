@@ -186,3 +186,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.classic-multi-error {
+    flex: none;
+    margin: 0 0 1.2vh;
+    padding: 1vh 0.8vw;
+    border-radius: 0.6vh;
+    background: #ff666615;
+    color: #ffc7c7;
+    font-size: 1.7vh;
+}

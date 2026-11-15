@@ -66,6 +66,13 @@ const assert = require('assert/strict');
             window.nativeCalls = [];
             window.nativeSlots = ['user0', null, null, null];
             window.transportMode = 'success';
+            window.nativeSmallLimit = null;
+            window.rejectRaisedQuality = true;
+            window.permanentFailSlot = -1;
+            localStorage.setItem('classic_multi_quality', '0');
+            localStorage.setItem('classic_multi_chat', 'false');
+            Play_chat_container.classList.remove('hide');
+            Play_ChatEnable = true;
             window.delayed = [];
             window.Android = new Proxy(
                 {},
@@ -145,9 +152,24 @@ const assert = require('assert/strict');
                                 nativeCalls.push({name});
                                 nativeSlots[1] = null;
                             };
+                        if (name === 'SetSmallPlayerBitrate')
+                            return function (...args) {
+                                nativeCalls.push({name, args});
+                                nativeSmallLimit = args;
+                            };
                         if (name === 'StartMultiStream')
                             return function (slot, ...args) {
                                 nativeCalls.push({name, args: [slot, ...args]});
+                                if (
+                                    slot > 0 &&
+                                    (permanentFailSlot === slot ||
+                                        (rejectRaisedQuality && nativeSmallLimit && (nativeSmallLimit[1] === 0 || nativeSmallLimit[1] > 720)))
+                                ) {
+                                    nativeSlots[slot] = null;
+                                    nativeCalls.push({name: 'DecoderRejected', args: [slot, ...nativeSmallLimit]});
+                                    setTimeout(() => smartTwitchTV.Play_MultiEnd(slot, 1, 4001), 0);
+                                    return;
+                                }
                                 nativeSlots[slot] = Play_MultiArray[slot].data[14];
                             };
                         return function (...args) {
@@ -170,7 +192,12 @@ const assert = require('assert/strict');
         assert.equal(await page.locator('#classic_multi [data-multi-id="stream:user0"]').isDisabled(), true);
         assert.equal(await page.evaluate(() => ClassicMulti.selected), 1);
         assert.equal(await page.locator('#chat_container0').isVisible(), true);
-        assert.deepEqual(await page.evaluate(() => nativeCalls.filter(c => c.name === 'SetSmallPlayerBitrate').at(-1).args), [0, 0]);
+        assert.deepEqual(
+            await page.evaluate(() => nativeCalls.filter(c => c.name === 'SetSmallPlayerBitrate').at(-1).args),
+            await page.evaluate(() => smallBefore)
+        );
+        assert.equal(await page.evaluate(() => ClassicMulti.qualityLimit), -1);
+        assert.equal(await page.evaluate(() => ClassicMulti.chatWanted), true);
 
         assert.equal(await page.locator('#dialog_multi_help').isVisible(), false);
         // Real remote input selects an empty slot then a channel; native named HLS callbacks reach StartMultiStream.
@@ -219,8 +246,9 @@ const assert = require('assert/strict');
             ClassicMulti_focus();
         });
         await page.keyboard.press('Enter');
-        assert.equal(await page.locator('.classic-multi-quality-option').count(), 4);
+        assert.equal(await page.locator('.classic-multi-quality-option').count(), 5);
         await page.evaluate(() => {
+            rejectRaisedQuality = false;
             ClassicMulti.cursor = 'limit:1080';
             ClassicMulti_focus();
         });
@@ -314,6 +342,33 @@ const assert = require('assert/strict');
         const sync = await page.evaluate(() => JSON.parse(PlayHLS_GetPlayListSyncToken(true, 'channel22', false)));
         assert.ok(sync.url.includes('/channel22.m3u8?'));
         assert.match(sync.responseText, /^#EXTM3U/);
+        // Native can reject a decoder *after* StartMultiStream returns. The 0.14
+        // default exposed every window to this failure; standard mode must not.
+        const beforeFailure = await page.evaluate(() => nativeSlots.slice());
+        await page.evaluate(() => {
+            rejectRaisedQuality = true;
+            ClassicMulti.qualityLimit = 0;
+            ClassicMulti_applyQuality(true);
+        });
+        await page.waitForFunction(() => ClassicMulti.qualityLimit === -1 && nativeSlots[1] && nativeSlots[2]);
+        assert.deepEqual(await page.evaluate(() => nativeSlots), beforeFailure);
+        assert.equal(await page.evaluate(() => Play_MultiArray.filter(s => s.data.length).length), 3);
+        assert.equal(await page.evaluate(() => nativeCalls.filter(c => c.name === 'DecoderRejected').length), 2);
+        assert.equal(await page.evaluate(() => Play_MultiArray[1].classicStandardRetry), true);
+        assert.equal(await page.evaluate(() => Play_MultiArray[2].classicStandardRetry), true);
+        assert.deepEqual(await page.evaluate(() => nativeSmallLimit), await page.evaluate(() => smallBefore));
+        // A persistent failure is reported at the top of the picker and never
+        // removes/restarts the still-playing main window or loops indefinitely.
+        await page.evaluate(() => {
+            permanentFailSlot = 2;
+            OSInterface_StartMultiStream(2, Play_MultiArray[2].AutoUrl, Play_MultiArray[2].playlist, true);
+        });
+        await page.waitForFunction(() => !Play_MultiArray[2].data.length);
+        await page.waitForFunction(() => !!document.querySelector('.classic-multi-error'));
+        assert.match(await page.locator('.classic-multi-error').innerText(), /4001/);
+        assert.equal(await page.evaluate(() => nativeSlots[0]), 'user2');
+        assert.equal(await page.evaluate(() => nativeSlots[1]), 'user3');
+        assert.equal(await page.evaluate(() => nativeCalls.filter(c => c.name === 'DecoderRejected').length), 3);
         // Closing the mode also removes the panel and invalidates requests.
         await page.evaluate(() => Play_controls[Play_MultiStream].enterKey());
         assert.equal(await page.evaluate(() => Play_MultiEnable), false);
@@ -324,7 +379,7 @@ const assert = require('assert/strict');
         );
         assert.deepEqual(errors, []);
         console.log(
-            'PASS: actual multistream entry and Up, four-slot picker, live/followed lists, native HLS callback startup, audio/main/remove, replacement failure and late-response cancellation, one remote focus and contained layout'
+            'PASS: standard-profile migration from 0.14, visible-chat entry, four native slot starts, decoder rejection after startup, bounded standard-profile recovery, visible terminal error preserving main playback, HLS correlation and remote navigation'
         );
     } catch (e) {
         console.error(

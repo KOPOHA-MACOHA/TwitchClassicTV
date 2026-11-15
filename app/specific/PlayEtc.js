@@ -2803,7 +2803,7 @@ function Play_MakeControls() {
                 }
 
                 Play_MultiChatBeffore = Play_isChatShown();
-                if (Play_MultiChatBeffore) Play_controls[Play_controlsChat].enterKey();
+                if (Play_MultiChatBeffore && !(PlayClassic_enabled() && ClassicMulti.entered)) Play_controls[Play_controlsChat].enterKey();
                 Play_SetAudioIcon();
 
                 Main_EventPlay(

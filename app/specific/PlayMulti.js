@@ -198,6 +198,7 @@ function Play_MultiFirstAvailable() {
 }
 
 function Play_MultiEnd(position, fail_type, errorCode) {
+    if (PlayClassic_enabled() && ClassicMulti.entered && ClassicMulti_playerFailed(position, fail_type, errorCode)) return;
     var reason = Play_MultiArray[position].data[1] + ' ' + STR_LIVE + STR_IS_OFFLINE;
     if (fail_type === 1) reason = STR_PLAYER_ERROR + STR_BR + STR_PLAYER_ERROR_MULTI;
     if (fail_type === 2) reason = STR_PLAYER_LAG_ERRO + STR_BR + STR_PLAYER_ERROR_MULTI;

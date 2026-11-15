@@ -1,4 +1,4 @@
-# Twitch Classic 0.14
+# Twitch Classic 0.15
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -102,3 +102,9 @@ Wide emotes reserve twice their intrinsic width with CSS grid; transformed conte
 Added a root Settings "Check for updates" row and a dedicated modern popup with available/checking/current/failure/downloading states, remote focus and Android installer handoff. Actual startup calls an independent check that bypasses legacy background/popup preferences and shares an in-flight request. Offers wait for welcome/login/settings dialogs to finish. Manual dismissal preserves settings focus.
 
 Multistream chat can target an occupied slot without changing the main video. Large-main layout uses the native spare upper-right region; grid chat uses an overlay. Small-player defaults (720p / 3 Mbps) no longer impose multistream limits: its own default is unbounded, with selectable 1080/720/480 ceilings. The native Auto algorithm and hardware/network limits still apply. Original small-player limits/chat preferences are restored on exit. Chat image previews are block elements below nickname/badge text; a geometry regression verifies unchanged first-line alignment and separate image rows.
+
+## 0.15 conservative multistream startup and native decoder failure
+
+The 0.14 unlimited default is rolled back to the existing standard small-player profile used in 0.13. An explicit migration resets the old default once. A raised ceiling remains an opt-in; native failures after StartMultiStream retry an affected extra slot at most once with standard settings. Terminal errors retain the main window and refresh the picker after the native failure handler clears the failed slot, including early-return paths. Error text is shown above the grid. Diagnostics contain only slot/type/code/ceiling/time, with no playback URL or token.
+
+The regression fixture now models decoder rejection through the real smartTwitchTV.Play_MultiEnd entry point after an attempted start. It tests standard settings on entry, restored chat visibility when entering from visible chat, recovery of multiple failed elevated slots, and a permanent failure without a retry loop or removal of the main window. Physical-device decoding remains unverified; the decoder-limit hypothesis is compatible with the regression report rather than a captured TV log.
