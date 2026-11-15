@@ -20,7 +20,7 @@ const {PNG}=require('pngjs');const jsQR=require('jsqr');
  // Test the source modal, its category hierarchy and key-up suppression on close.
  await page.evaluate(()=>{Play_isOn=true;PlayVod_isOn=false;PlayClip_isOn=false;PlayClassic_open();});
  await page.locator('#classic_settings').waitFor();assert.equal(await page.locator('#classic_settings_rows button').count(),8);
- await page.screenshot({path:'/workspace/SmartTwitchTV/tests/player-settings.png'});
+ await page.screenshot({path:'tests/player-settings.png'});
  await page.evaluate(()=>PlayClassic_handleKeyDown({keyCode:KEY_ENTER}));assert.ok(await page.locator('#classic_settings_rows').innerText());
  await page.evaluate(()=>PlayClassic_handleKeyDown({keyCode:KEY_RETURN}));assert.equal(await page.locator('#classic_settings_rows button').count(),8);
  await page.evaluate(()=>PlayClassic_handleKeyDown({keyCode:KEY_RETURN}));assert.equal(await page.locator('#classic_settings').count(),0);
@@ -49,7 +49,7 @@ const {PNG}=require('pngjs');const jsQR=require('jsqr');
  assert.equal(await page.evaluate(()=>AddUser_DeviceCodeTimeout),7);
  await page.evaluate(()=>{Main_HideWarningDialog();Main_HideWelcomeDialog();Main_HideAboutDialog();});
  const png=PNG.sync.read(await page.locator('.qr-login-code').screenshot({path:'tests/login-qr.png'}));const decoded=jsQR(new Uint8ClampedArray(png.data),png.width,png.height);assert.ok(decoded,'QR is decodable');assert.equal(decoded.data,uri);assert.ok(!decoded.data.includes('private-device-fixture'));
- await page.screenshot({path:'/workspace/SmartTwitchTV/tests/login-screen.png'});
+ await page.screenshot({path:'tests/login-screen.png'});
  await page.evaluate(()=>{AddUser_DeviceCodeExpiresAt=Date.now()-1;AddUser_getCodeCheck(0);});assert.ok((await page.locator('#add_user_text_counter').textContent()).includes('Код истёк'));assert.equal(await page.evaluate(()=>AddUser_DeviceCode),null);
  await page.evaluate(()=>AddUser_handleKeyDown({keyCode:KEY_ENTER}));await page.waitForFunction(()=>AddUser_DeviceCode!==null);assert.ok(requests.filter(r=>r==='device').length>=2);
  await page.evaluate(()=>AddUser_exit());assert.equal(await page.evaluate(()=>AddUser_DeviceCode),null);
