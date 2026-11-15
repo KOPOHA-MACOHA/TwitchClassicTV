@@ -617,7 +617,7 @@ function Chat_loadChatSuccess(responseObj, id) {
         }
 
         // Preserve Twitch's stored author colour in recordings as well.
-        nickColor = 'style="color: ' + ClassicChatPresentation_nameColor(mmessage.userColor, comments[i].commenter.id || comments[i].commenter.login || comments[i].commenter.displayName) + ';"';
+        nickColor = ClassicChatPresentation_nickAttributes(mmessage.userColor, comments[i].commenter.id || comments[i].commenter.login || comments[i].commenter.displayName);
         div +=
             '<span class="classic-chat-nick' +
             (mmessage.is_action ? ' class_bold' : '') + '" ' +

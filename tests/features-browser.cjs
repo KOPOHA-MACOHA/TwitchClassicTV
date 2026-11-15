@@ -25,7 +25,15 @@ const assert = require('assert/strict');
         await page.waitForFunction(() => typeof ClassicChat_render === 'function' && typeof Main_values !== 'undefined' && !!Main_values.Main_Go);
         await page.keyboard.press('Escape');
         // Huge zero-width layers and z! must never paint over the nickname.
-        for (const message of ['w! Base Overlay', 'Base Overlay ffzW', 'Base z! Overlay', 'z! Base', 'Overlay']) {
+        for (const message of [
+            'w! Base Overlay',
+            'Base Overlay ffzW',
+            'Base z! Overlay',
+            'z! Base',
+            'Overlay',
+            'w! Wide Tail',
+            'w! Wide Overlay Tail'
+        ]) {
             const bounds = await page.evaluate(async message => {
                 ClassicFeatures_set('emote_modifiers', true);
                 const image =
@@ -34,7 +42,11 @@ const assert = require('assert/strict');
                         '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#9146ff"/></svg>'
                     );
                 const base = '<img class="emoticon" style="width:40px;height:40px" src="' + image + '">';
-                extraEmotes[0] = {Base: {chat_div: base}, Overlay: {chat_div: base.replace('width:40px', 'width:800px'), chat_div_zero: base}};
+                extraEmotes[0] = {
+                    Base: {chat_div: base},
+                    Wide: {chat_div: base.replace('width:40px', 'width:240px')},
+                    Overlay: {chat_div: base.replace('width:40px', 'width:800px'), chat_div_zero: base}
+                };
                 const fixture = document.createElement('div');
                 fixture.id = 'zero_geometry';
                 fixture.style.cssText = 'position:fixed;left:40px;top:40px;font:24px Inter;background:#18181b;color:white;z-index:999';
@@ -47,7 +59,13 @@ const assert = require('assert/strict');
                     const r = e.getBoundingClientRect();
                     return {left: r.left, right: r.right, width: r.width};
                 };
+                const wide = fixture.querySelector('.classic-emote-wide');
+                const tail = document.createElement('span');
+                tail.textContent = ' NEXT';
+                fixture.appendChild(tail);
                 const result = {
+                    wide: wide ? rect(wide) : null,
+                    tail: rect(tail),
                     nickRight: nick.right,
                     images: [...fixture.querySelectorAll('img')].map(rect),
                     stack: stack ? rect(stack) : null,
@@ -57,6 +75,13 @@ const assert = require('assert/strict');
             }, message);
             assert.equal(bounds.zero, 0, message);
             for (const image of bounds.images) assert.ok(image.left >= bounds.nickRight - 1, JSON.stringify({message, bounds}));
+            if (bounds.wide) {
+                assert.ok(
+                    bounds.images[0].left >= bounds.wide.left - 1 && bounds.images[0].right <= bounds.wide.right + 1,
+                    JSON.stringify({message, bounds})
+                );
+                assert.ok(bounds.tail.left >= bounds.wide.right - 1, JSON.stringify({message, bounds}));
+            }
             if (bounds.stack) {
                 assert.equal(bounds.images.length, 2);
                 assert.ok(Math.abs(bounds.images[0].width - bounds.images[1].width) < 1, JSON.stringify({message, bounds}));
@@ -65,7 +90,7 @@ const assert = require('assert/strict');
                     JSON.stringify({message, bounds})
                 );
                 if (message.includes('w!') || message.includes('ffzW'))
-                    assert.ok(Math.abs(bounds.stack.width - 80) < 1, JSON.stringify({message, bounds}));
+                    assert.ok(Math.abs(bounds.stack.width - (message.includes('Wide') ? 480 : 80)) < 1, JSON.stringify({message, bounds}));
             }
             await page.evaluate(() => document.getElementById('zero_geometry').remove());
         }
@@ -86,7 +111,7 @@ const assert = require('assert/strict');
                 layers: el.querySelector('.classic-emote-stack').children.length,
                 flip: !!el.querySelector('.classic-emote-flip-x'),
                 shake: !!el.querySelector('.classic-emote-shake'),
-                wideTransform: getComputedStyle(first).transform,
+                wideTransform: getComputedStyle(first.querySelector('.classic-emote-stretch-content')).transform,
                 text: el.textContent
             };
             ClassicFeatures_set('emote_modifiers', false);
@@ -156,7 +181,7 @@ const assert = require('assert/strict');
             Main_showSettings();
             ClassicFeatures_menu('chat');
         });
-        assert.equal(await page.locator('#classic_preferences_rows button').count(), 4);
+        assert.equal(await page.locator('#classic_preferences_rows button').count(), 5);
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicFeatures_enabled('emote_modifiers')), false);
         await page.keyboard.press('Enter');

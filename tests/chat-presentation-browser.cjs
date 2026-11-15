@@ -41,6 +41,7 @@ const {chromium} = require('playwright-core'),
             document.getElementById('chat_container1').classList.remove('hide');
             Chat_Id[0] = 123;
             Chat_Id[1] = 124;
+            ClassicFeatures_set('readable_nicks', false);
             Settings_value.show_chatters.defaultValue = 2;
             ChatLive_loadChatters(0, 123);
             ChatLive_loadChattersViewersSuccess(JSON.stringify({data: [{viewer_count: 1234567}]}), 0, 123);
@@ -175,6 +176,37 @@ const {chromium} = require('playwright-core'),
         assert.equal(result.live[2].atuser, true);
         assert.deepEqual(result.vod, ['rgb(127, 18, 171)']);
         assert.equal(result.fallback, true);
+        // Exact source colours remain available; only dark paints change when enabled.
+        const colours = await page.evaluate(() => {
+            ClassicFeatures_set('readable_nicks', true);
+            return {
+                dark: ClassicChatPresentation_readableColor('#123456'),
+                bright: ClassicChatPresentation_readableColor('#00FF00'),
+                black: ClassicChatPresentation_readableColor('#000'),
+                source: document.querySelector('.classic-chat-nick').dataset.twitchColor,
+                paint: document.querySelector('.classic-chat-nick').style.color
+            };
+        });
+        const luminance = hex =>
+            hex
+                .slice(1)
+                .match(/../g)
+                .map(c => parseInt(c, 16) / 255)
+                .map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+                .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+        for (const color of [colours.dark, colours.black]) assert.ok((luminance(color) + 0.05) / (luminance('#18181b') + 0.05) >= 4.5, color);
+        assert.equal(colours.bright, '#00FF00');
+        assert.equal(colours.source, '#123456');
+        assert.notEqual(colours.paint, 'rgb(18, 52, 86)');
+        await page.evaluate(() => ClassicFeatures_set('readable_nicks', false));
+        assert.equal(
+            await page
+                .locator('.classic-chat-nick')
+                .first()
+                .evaluate(e => e.style.color),
+            'rgb(18, 52, 86)'
+        );
+
         await page.screenshot({path: 'tests/chat-presentation.png'});
         await page.evaluate(() => {
             Settings_value.classic_player.defaultValue = 0;

@@ -18,7 +18,7 @@ const {chromium} = require('playwright-core'),
             checks++;
             assert.equal(r.request().headers().authorization, undefined);
             if (mode === 'failure') return r.fulfill({status: 503, body: 'down'});
-            const name = mode === 'old' ? '0.9' : '0.13';
+            const name = mode === 'old' ? '0.9' : '0.14';
             return r.fulfill({
                 contentType: 'application/json',
                 body: JSON.stringify({
@@ -73,7 +73,7 @@ const {chromium} = require('playwright-core'),
         await page.waitForFunction(() => !ClassicUpdates.checking);
         assert.equal(await page.evaluate(() => Main_HasUpdate), true);
         assert.equal(await page.evaluate(() => Main_IsWebupdate), false);
-        assert.match(await page.evaluate(() => version.ApkUrl), /TwitchClassicTV\/releases\/download\/v0.13\/Twitch-Classic-0.13.apk$/);
+        assert.match(await page.evaluate(() => version.ApkUrl), /TwitchClassicTV\/releases\/download\/v0.14\/Twitch-Classic-0.14.apk$/);
         assert.ok((await page.evaluate(() => version.changelog[0].changes[0])).startsWith('&lt;img'));
         await page.evaluate(() => {
             Main_IsOn_OSInterface = true;
@@ -83,10 +83,10 @@ const {chromium} = require('playwright-core'),
         });
         assert.equal(
             (await page.evaluate(() => nativeUpdates))[0][0],
-            'https://github.com/KOPOHA-MACOHA/TwitchClassicTV/releases/download/v0.13/Twitch-Classic-0.13.apk'
+            'https://github.com/KOPOHA-MACOHA/TwitchClassicTV/releases/download/v0.14/Twitch-Classic-0.14.apk'
         );
         assert.equal(await page.evaluate(() => ClassicUpdates_newer('0.9', '0.12')), false);
-        assert.equal(await page.evaluate(() => ClassicUpdates_newer('0.13', '0.12')), true);
+        assert.equal(await page.evaluate(() => ClassicUpdates_newer('0.14', '0.12')), true);
         const current = checks;
         await page.evaluate(() => Main_CheckUpdate(false));
         assert.equal(checks, current);

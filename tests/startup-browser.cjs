@@ -1,7 +1,12 @@
 const {chromium} = require('playwright-core'),
     assert = require('assert/strict');
 (async () => {
-    const browser = await chromium.launch({executablePath: process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()), headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
+    const browser = await chromium.launch({
+        executablePath:
+            process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()),
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage']
+    });
     const page = await browser.newPage({viewport: {width: 1920, height: 1080}}),
         errors = [];
     page.on('pageerror', e => {
@@ -51,7 +56,21 @@ const {chromium} = require('playwright-core'),
                                         ? JSON.stringify(data)
                                         : '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=4000000,RESOLUTION=1920x1080,CODECS="avc1.64002a,mp4a.40.2"\nhttps://fixture.test/live.m3u8\n'
                                 };
-                                setTimeout(() => smartTwitchTV[callback](JSON.stringify(response), check, c1, c2, c3, c4, c5, success, failure), 0);
+                                setTimeout(
+                                    () =>
+                                        smartTwitchTV[callback](
+                                            JSON.stringify(response),
+                                            check,
+                                            String(c1),
+                                            String(c2),
+                                            String(c3),
+                                            String(c4),
+                                            String(c5),
+                                            success,
+                                            failure
+                                        ),
+                                    0
+                                );
                             };
                         if (name === 'StartAuto')
                             return function (...args) {
@@ -170,6 +189,10 @@ const {chromium} = require('playwright-core'),
             );
             throw e;
         }
+        assert.match(
+            await page.evaluate(() => nativeCalls.find(c => c.name === 'StartAuto').args[0]),
+            /^https:\/\/usher\.ttvnw\.net\/api\/channel\/hls\/fixture\.m3u8\?/
+        );
         assert.equal(await page.evaluate(() => ClassicPlayback.active), true);
         assert.equal(await page.evaluate(() => ClassicPlayback.services), false);
         assert.equal(await page.evaluate(() => nativeCalls.filter(c => c.name === 'XmlHttpGetFull').length), 6);

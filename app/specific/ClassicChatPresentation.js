@@ -123,3 +123,80 @@ function ClassicChatPresentation_overlayCount() {
     extra.title = ClassicShell_ru() ? 'Подключены к чату' : 'Connected to chat';
     target.appendChild(extra);
 }
+
+// Cache by colour, not by user/message. No DOM measurement or image filters in
+// the chat hot path. The source colour remains on each nick for exact restoration.
+var ClassicChatPresentation_colourCache = {},
+    ClassicChatPresentation_colourCacheSize = 0;
+function ClassicChatPresentation_readableColor(source) {
+    if (!ClassicFeatures_enabled('readable_nicks')) return source;
+    var hex = source.slice(1);
+    if (hex.length === 3)
+        hex = hex
+            .split('')
+            .map(function (c) {
+                return c + c;
+            })
+            .join('');
+    var key = hex.toLowerCase();
+    if (ClassicChatPresentation_colourCache[key]) return ClassicChatPresentation_colourCache[key];
+    var rgb = [0, 2, 4].map(function (i) {
+        return parseInt(hex.slice(i, i + 2), 16);
+    });
+    function luminance(values) {
+        return values
+            .map(function (v) {
+                v /= 255;
+                return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            })
+            .reduce(function (sum, v, i) {
+                return sum + v * [0.2126, 0.7152, 0.0722][i];
+            }, 0);
+    }
+    var minimum = 4.5 * (luminance([24, 24, 27]) + 0.05) - 0.05;
+    var adjusted = source;
+    if (luminance(rgb) < minimum) {
+        var low = 0,
+            high = 1;
+        // Mixing with white preserves the hue. Find the least brightening that
+        // meets 4.5:1 on the dark chat background, including originally black nicks.
+        for (var i = 0; i < 12; i++) {
+            var mix = (low + high) / 2;
+            if (
+                luminance(
+                    rgb.map(function (v) {
+                        return v + (255 - v) * mix;
+                    })
+                ) < minimum
+            )
+                low = mix;
+            else high = mix;
+        }
+        adjusted =
+            '#' +
+            rgb
+                .map(function (v) {
+                    return Math.ceil(v + (255 - v) * high)
+                        .toString(16)
+                        .padStart(2, '0');
+                })
+                .join('');
+    }
+    if (ClassicChatPresentation_colourCacheSize >= 512) {
+        ClassicChatPresentation_colourCache = {};
+        ClassicChatPresentation_colourCacheSize = 0;
+    }
+    ClassicChatPresentation_colourCache[key] = adjusted;
+    ClassicChatPresentation_colourCacheSize++;
+    return adjusted;
+}
+function ClassicChatPresentation_nickAttributes(color, name) {
+    var source = ClassicChatPresentation_nameColor(color, name);
+    return 'data-twitch-color="' + source + '" style="color: ' + ClassicChatPresentation_readableColor(source) + ';"';
+}
+function ClassicChatPresentation_refreshNickColors() {
+    document.querySelectorAll('[data-twitch-color]').forEach(function (element) {
+        var source = element.dataset.twitchColor;
+        if (/^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(source)) element.style.color = ClassicChatPresentation_readableColor(source);
+    });
+}

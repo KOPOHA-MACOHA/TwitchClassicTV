@@ -89,7 +89,7 @@ const assert = require('assert/strict');
                                     const response = {
                                         status: transportMode === 'failure' ? 403 : 200,
                                         checkResult: check,
-                                        url,
+                                        // Tools.ResponseObj has no URL on the Android wire.
                                         responseText: token
                                             ? JSON.stringify({
                                                   data: {
@@ -101,10 +101,36 @@ const assert = require('assert/strict');
                                               })
                                             : '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=4000000,RESOLUTION=1920x1080,CODECS="avc1.64002a,mp4a.40.2"\nhttps://fixture.test/live.m3u8\n'
                                     };
-                                    smartTwitchTV[callback](JSON.stringify(response), check, c1, c2, c3, c4, c5, success, failure);
+                                    smartTwitchTV[callback](
+                                        JSON.stringify(response),
+                                        check,
+                                        String(c1),
+                                        String(c2),
+                                        String(c3),
+                                        String(c4),
+                                        String(c5),
+                                        success,
+                                        failure
+                                    );
                                 };
-                                if (transportMode === 'silent') delayed.push(reply);
+                                if (transportMode === 'silent' || (transportMode === 'hold-playlists' && callback === 'PlayHLS_PlayListUrlResult'))
+                                    delayed.push(reply);
                                 else setTimeout(reply, 0);
+                            };
+                        if (name === 'mMethodUrlHeaders')
+                            return function (url) {
+                                nativeCalls.push({name, url});
+                                return JSON.stringify({
+                                    status: 200,
+                                    checkResult: 0,
+                                    responseText: url.includes('/gql')
+                                        ? JSON.stringify({
+                                              data: {
+                                                  streamPlaybackAccessToken: {value: '{"chansub":{"restricted_bitrates":[]}}', signature: 'fixture'}
+                                              }
+                                          })
+                                        : '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=4000000\nhttps://fixture.test/live.m3u8\n'
+                                });
                             };
                         if (name === 'EnableMultiStream')
                             return function (big, offset) {
@@ -146,7 +172,15 @@ const assert = require('assert/strict');
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicMulti.cursor), 'stream:user1');
         await page.keyboard.press('Enter');
-        await page.waitForFunction(() => nativeCalls.some(c => c.name === 'StartMultiStream' && c.args[0] === 1));
+        await page.waitForFunction(() => ClassicMulti.error || nativeCalls.some(c => c.name === 'StartMultiStream' && c.args[0] === 1));
+        assert.equal(await page.evaluate(() => ClassicMulti.error), '', 'Android does not echo the request URL; a valid playlist must still start');
+        const firstStart = await page.evaluate(() => nativeCalls.find(c => c.name === 'StartMultiStream' && c.args[0] === 1));
+        assert.match(firstStart.args[1], /^https:\/\/usher\.ttvnw\.net\/api\/channel\/hls\/channel1\.m3u8\?/);
+        assert.equal(
+            firstStart.args[1],
+            await page.evaluate(() => nativeCalls.find(c => c.name === 'XmlHttpGetFull' && c.url.includes('/channel/hls/channel1.m3u8')).url)
+        );
+
         assert.equal(await page.evaluate(() => Play_MultiArray[1].data[14]), 'user1');
         assert.equal(await page.evaluate(() => ClassicMulti.selected), 2);
         await page.keyboard.press('Enter');
@@ -217,6 +251,34 @@ const assert = require('assert/strict');
         await page.keyboard.press('Enter');
         await page.waitForFunction(() => !ClassicMulti.loading && ClassicMulti.streams[0].user_id === 'user10');
         assert.equal(await page.locator('#classic_multi .classic-multi-stream').count(), 6);
+        // Interleaved consumers must recover their own URLs, not a shared last URL.
+        await page.evaluate(() => {
+            window.hlsResults = [];
+            window.fixturePipelineCapture = function fixturePipelineCapture(body, slot, id) {
+                hlsResults.push({body: JSON.parse(body), slot, id});
+            };
+            transportMode = 'hold-playlists';
+            PlayHLS_GetPlayListAsync(true, 'channel20', 20001, 2, fixturePipelineCapture);
+            PlayHLS_GetPlayListAsync(true, 'channel21', 20002, 3, fixturePipelineCapture);
+        });
+        await page.waitForFunction(() => delayed.length === 2);
+        await page.evaluate(() => {
+            transportMode = 'success';
+            delayed
+                .splice(0)
+                .reverse()
+                .forEach(reply => reply());
+        });
+        const concurrent = await page.evaluate(() => hlsResults);
+        assert.deepEqual(
+            concurrent.map(r => r.id),
+            [20002, 20001]
+        );
+        assert.ok(concurrent[0].body.url.includes('/channel21.m3u8?'));
+        assert.ok(concurrent[1].body.url.includes('/channel20.m3u8?'));
+        const sync = await page.evaluate(() => JSON.parse(PlayHLS_GetPlayListSyncToken(true, 'channel22', false)));
+        assert.ok(sync.url.includes('/channel22.m3u8?'));
+        assert.match(sync.responseText, /^#EXTM3U/);
         // Closing the mode also removes the panel and invalidates requests.
         await page.evaluate(() => Play_controls[Play_MultiStream].enterKey());
         assert.equal(await page.evaluate(() => Play_MultiEnable), false);

@@ -1819,7 +1819,7 @@ function ChatLive_loadChatSuccess(message, chat_number, addToStart) {
 
     //Add nick
     nick = tags['display-name'];
-    nickColor = 'style="color: ' + ClassicChatPresentation_nameColor(tags.color, tags['user-id'] || nick) + ';"';
+    nickColor = ClassicChatPresentation_nickAttributes(tags.color, tags['user-id'] || nick);
     div += '<span class="classic-chat-nick' + (action ? ' class_bold' : '') + '" ' + nickColor + '>' + nick + '</span>' + (action ? '' : '&#58;') + '&nbsp;';
 
     div +=

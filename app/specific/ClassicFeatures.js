@@ -6,6 +6,7 @@ var ClassicFeatures_defaults = {
     chat_images: false,
     emote_modifiers: true,
     connected_chatters: true,
+    readable_nicks: true,
     emote_proxy: false
 };
 function ClassicFeatures_enabled(key) {
@@ -14,6 +15,7 @@ function ClassicFeatures_enabled(key) {
 }
 function ClassicFeatures_set(key, value) {
     Main_setItem('classic_feature_' + key, value ? 'true' : 'false');
+    if (key === 'readable_nicks') ClassicChatPresentation_refreshNickColors();
     if (key === 'connected_chatters') {
         [0, 1].forEach(ClassicChatPresentation_refreshCount);
         ClassicChatPresentation_overlayCount();
@@ -59,6 +61,11 @@ function ClassicFeatures_menu(kind) {
                           ru
                               ? 'Сервис ReYohoho. Только запросы смайлов, без токена Twitch. Применяется после повторного открытия канала.'
                               : 'ReYohoho service. Emote requests only, without your Twitch token. Reopen the channel to apply.'
+                      ],
+                      [
+                          'readable_nicks',
+                          ru ? 'Осветлять тёмные ники' : 'Brighten dark nicknames',
+                          ru ? 'Сохраняет оттенок. Выключите для точных исходных цветов Twitch.' : 'Preserves hue. Turn off for exact Twitch colours.'
                       ]
                   ]
                 : [

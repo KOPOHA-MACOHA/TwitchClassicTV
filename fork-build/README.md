@@ -1,4 +1,4 @@
-# Twitch Classic 0.12
+# Twitch Classic 0.13
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -90,3 +90,9 @@ Clear focus from all toolbar controls before assigning the current selection. Pr
 ## 0.12 repository migration, multistream and chat geometry
 
 Migrated the full fork to KOPOHA-MACOHA/TwitchClassicTV with a separate baseline 0.11 commit. Added a contained native-compatible multistream picker, native HLS named callbacks, cancellation and startup watchdog, four-slot operations and remote input. Bounded zero-width layers to the base emote before applying group modifiers; z! at the start retains a normal visible emote rather than painting over the nick. Added an optional connected-to-chat count (Twitch chatters.count, not proof of video viewing). Added portable browser tests, pinned public tool bootstrap, private-key-only release automation and fork-owned APK update checks. See docs/RELEASES.md for signing setup and limitations.
+
+## 0.13 native playlist response and chat layout
+
+The pinned Android Tools.ResponseObj constructor sets url=null (also confirmed in the distributed DEX); Gson omits that field. The 0.12 multi fixture incorrectly supplied a URL. Request URLs are now tracked by callback, request ID and slot, with bounded lifetime, and restored on successful asynchronous/synchronous playlist results. Token failures retain request/slot correlation. Tests now omit the URL on the wire, coerce callback arguments like Java, assert the exact URL delivered to native startup, and complete concurrent requests in reverse order.
+
+Wide emotes reserve twice their intrinsic width with CSS grid; transformed content paints inside its reserved frame. Zero-width layers are confined to their base composition. A dedicated browser test checks nicknames, words, neighboring emotes, multiple compositions, narrow/wrapped messages, and animation phases. Dark nickname brightening is optional, preserves hue and original source colours, and caches by colour without per-message DOM measurement.

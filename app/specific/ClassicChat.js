@@ -37,6 +37,10 @@ function ClassicChat_image(token) {
         return null;
     }
 }
+function ClassicChat_effect(html, modifier) {
+    var paint = modifier === 'wide' ? 'classic-emote-stretch-content' : 'classic-emote-transform-content';
+    return '<span class="classic-emote-effect classic-emote-' + modifier + '"><span class="' + paint + '">' + html + '</span></span>';
+}
 function ClassicChat_render(chunks, chatNumber, bits) {
     var result = [],
         pending = [],
@@ -63,7 +67,7 @@ function ClassicChat_render(chunks, chatNumber, bits) {
         }
         if (zero && last) {
             pending.forEach(function (token) {
-                html = '<span class="classic-emote-effect classic-emote-' + ClassicChat_modifiers[token] + '">' + html + '</span>';
+                html = ClassicChat_effect(html, ClassicChat_modifiers[token]);
             });
             pending = [];
             last.layers.push(html);
@@ -127,7 +131,7 @@ function ClassicChat_render(chunks, chatNumber, bits) {
                             .join('') +
                         '</span>';
                 (item.modifiers || []).forEach(function (modifier) {
-                    html = '<span class="classic-emote-effect classic-emote-' + modifier + '">' + html + '</span>';
+                    html = ClassicChat_effect(html, modifier);
                 });
                 return html;
             })

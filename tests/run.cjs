@@ -23,6 +23,7 @@ const root = require('path').resolve(__dirname, '..');
             'native-auth',
             'startup',
             'features',
+            'emote-layout',
             'chat-presentation',
             'player-navigation',
             'multistream',

@@ -381,9 +381,16 @@ function ClassicMulti_add(stream) {
         ClassicMulti_fail();
     }
 }
-function ClassicMulti_result(response, slot) {
+function ClassicMulti_result(response, slot, id, failure) {
     var request = ClassicMulti.pending;
     if (!request || request.slot !== slot || !ClassicMulti.active || !Play_isOn || !Play_MultiEnable) return;
+    if (response === null) {
+        if (id === request.id)
+            ClassicMulti_fail(
+                ClassicMulti_words('Twitch не выдал доступ к трансляции. Попробуйте ещё раз.', 'Twitch did not grant stream access. Try again.')
+            );
+        return;
+    }
     if (Main_isStopped) {
         ClassicMulti_cancelPending();
         return;
@@ -396,7 +403,7 @@ function ClassicMulti_result(response, slot) {
         return;
     }
     if (result.checkResult !== request.id) return;
-    if (result.status !== 200 || !result.url || !result.responseText) {
+    if (result.status !== 200 || !result.url || typeof result.responseText !== 'string' || !/^\s*#EXTM3U(?:\r?\n|$)/.test(result.responseText)) {
         ClassicMulti_fail();
         return;
     }
@@ -408,9 +415,9 @@ function ClassicMulti_result(response, slot) {
     ClassicMulti.cursor = 'slot:' + ClassicMulti.selected;
     ClassicMulti_render();
 }
-function ClassicMulti_fail() {
+function ClassicMulti_fail(reason) {
     ClassicMulti_cancelPending();
-    ClassicMulti.error = ClassicMulti_words('Не удалось подключить трансляцию. Попробуйте ещё раз.', 'Could not connect. Try again.');
+    ClassicMulti.error = reason || ClassicMulti_words('Не удалось подключить трансляцию. Попробуйте ещё раз.', 'Could not connect. Try again.');
     ClassicMulti_render();
 }
 function ClassicMulti_audio(slot) {

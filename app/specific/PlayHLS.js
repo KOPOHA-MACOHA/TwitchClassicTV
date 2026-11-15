@@ -113,11 +113,16 @@ function PlayHLS_GetTokenResult(result, checkResult, check_1, check_2, check_3, 
         Channel_or_VOD_Id = check_3,
         CheckId_x = check_5;
 
-    var response = JSON.parse(result);
+    var response, obj;
+    try {
+        response = JSON.parse(result) || {};
+        if (response.status === 200) obj = JSON.parse(response.responseText);
+    } catch (error) {
+        obj = null;
+    }
+    response = response || {};
 
-    if (response.status === 200) {
-        var obj = JSON.parse(response.responseText);
-
+    if (response.status === 200 && obj) {
         if (obj.data && obj.data[isLive ? Play_live_token_prop : Play_vod_token_prop]) {
             var tokenObj = obj.data[isLive ? Play_live_token_prop : Play_vod_token_prop];
             var Token = tokenObj.value;
@@ -130,7 +135,7 @@ function PlayHLS_GetTokenResult(result, checkResult, check_1, check_2, check_3, 
 
     // prettier-ignore
     eval(callBackSuccess)(// jshint ignore:line
-        null
+        null, parseInt(CheckId_x), parseInt(checkResult), {stage: 'token', status: response.status}
     );
 }
 
@@ -183,6 +188,19 @@ function PlayHLS_GetPlayListUrl(isLive, Channel_or_VOD_Id, Token, Sig, useProxy)
     return {url: url, headers: headers};
 }
 
+// Tools.ResponseObj in native 3.0.379 does not echo the requested URL.
+// Keep it per callback/request/slot, never in one shared "last URL" variable.
+var PlayHLS_playlistRequests = {};
+function PlayHLS_playlistKey(callback, id, slot) {
+    return callback + ':' + String(id) + ':' + String(slot);
+}
+function PlayHLS_takePlaylistRequest(key) {
+    var entry = PlayHLS_playlistRequests[key];
+    if (entry) clearTimeout(entry.timer);
+    delete PlayHLS_playlistRequests[key];
+    return entry;
+}
+
 function PlayHLS_PlayListUrl(isLive, Channel_or_VOD_Id, CheckId_y, CheckId_x, callBackSuccess, Token, Sig, useProxy) {
     // console.log('isLive', isLive);
     // console.log('Channel_or_VOD_Id', Channel_or_VOD_Id);
@@ -194,6 +212,16 @@ function PlayHLS_PlayListUrl(isLive, Channel_or_VOD_Id, CheckId_y, CheckId_x, ca
     // console.log('callBackSuccess', callBackSuccess);
 
     var urlObj = PlayHLS_GetPlayListUrl(isLive, Channel_or_VOD_Id, Token, Sig, useProxy);
+    var key = PlayHLS_playlistKey(callBackSuccess, CheckId_y, CheckId_x);
+    PlayHLS_takePlaylistRequest(key);
+    var entry = {url: urlObj.url};
+    entry.timer = setTimeout(
+        function () {
+            if (PlayHLS_playlistRequests[key] === entry) delete PlayHLS_playlistRequests[key];
+        },
+        Math.max(1000, useProxy ? proxy_timeout : DefaultHttpGetTimeout) + 1000
+    );
+    PlayHLS_playlistRequests[key] = entry;
 
     OSInterface_XmlHttpGetFull(
         urlObj.url, //String urlString
@@ -229,7 +257,18 @@ function PlayHLS_PlayListUrlResult(result, checkResult, check_1, check_2, check_
         Channel_or_VOD_Id = check_3,
         Checked_Token = check_4,
         CheckId_x = check_5,
+        response;
+    try {
         response = JSON.parse(result);
+    } catch (error) {
+        response = null;
+    }
+    if (!response) response = {status: 0, responseText: '', checkResult: Number(checkResult)};
+    var request = PlayHLS_takePlaylistRequest(PlayHLS_playlistKey(callBackSuccess, CheckId_y, CheckId_x));
+    if (response.status === 200 && request) {
+        response.url = request.url;
+        result = JSON.stringify(response);
+    }
 
     if (response.status !== 200) {
         //in case we fail using proxy restart the process without using proxy
@@ -335,7 +374,8 @@ function PlayHLS_GetPlayListSyncUrl(isLive, Channel_or_VOD_Id, useProxy, Token, 
                 if (useProxy) {
                     Main_EventProxy(true);
                 }
-                return obj;
+                response.url = urlObj.url;
+                return JSON.stringify(response);
             } else {
                 //in case we fail using proxy restart the process without using proxy
                 if (isLive && useProxy && PlayHLS_CheckProxyResultFail(response.responseText)) {
