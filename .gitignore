@@ -61,3 +61,9 @@ fork-build/patch-result.json
 fork-build/upload-*.json
 fork-build/validation*.json
 tests/*.png
+
+.classic-tools/
+artifacts/
+**/node_modules/
+tests/node_modules
+fork-build/upload*.json

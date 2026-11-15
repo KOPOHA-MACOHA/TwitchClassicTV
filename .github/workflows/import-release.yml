@@ -1,0 +1,32 @@
+name: Import existing signed release
+on:
+  push:
+    branches: [master]
+    paths: ['fork-build/release-import.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install androguard==4.1.3
+      - run: python fork-build/bootstrap.py --base-only
+      - name: Download and verify signed build
+        run: python fork-build/import_release.py
+      - name: Verify existing signing identity and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="$(python -c 'import json; print("Twitch-Classic-"+json.load(open("fork-build/version.json"))["name"]+".apk")')"
+          TAG="$(python -c 'import json; print("v"+json.load(open("fork-build/version.json"))["name"])')"
+          SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$SIGNER" verify --print-certs "$APK" | tee "$RUNNER_TEMP/signature.txt"
+          grep -F '95ae6fe54cd368ee2b8826d977edc86f880eb274f8a75fdcfe047e150602149d' "$RUNNER_TEMP/signature.txt"
+          sha256sum "$APK" > SHA256SUMS
+          python -c 'import zipfile; zipfile.ZipFile("'"$APK"'").extract("assets/classic-source.zip", "artifacts")'
+          gh release create "$TAG" "$APK" SHA256SUMS artifacts/assets/classic-source.zip --target "$GITHUB_SHA" --title "Twitch Classic ${TAG#v}" --notes-file docs/RELEASE-NOTES.md

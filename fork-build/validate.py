@@ -1,20 +1,21 @@
 from pathlib import Path
-import zipfile,hashlib,io,sys
+import zipfile,hashlib,io,sys,json
 sys.path.insert(0,'/tmp/tv-python')
 from loguru import logger
 logger.remove()
 from androguard.core.apk import APK
 root=Path(__file__).resolve().parent.parent
-path=root/'Twitch-Classic-0.11.apk'
+release=json.loads((root/'fork-build/version.json').read_text())
+path=root/('Twitch-Classic-'+release['name']+'.apk')
 a=APK(str(path));b=APK(str(root/'upstream-379.apk'))
 assert a.get_package()=='org.tvmod.classic'
-assert a.get_androidversion_code()=='390'
+assert a.get_androidversion_code()==str(release['code'])
 ns={'a':'http://schemas.android.com/apk/res/android'}
 m=a.get_android_manifest_xml();assert m.find('application').get('{'+ns['a']+'}label')=='Twitch Classic'
 assert m.xpath('//category[@a:name="android.intent.category.LEANBACK_LAUNCHER"]',namespaces=ns)
 auth=set(m.xpath('//provider/@a:authorities',namespaces=ns));old=set(b.get_android_manifest_xml().xpath('//provider/@a:authorities',namespaces=ns));assert not auth&old
 with zipfile.ZipFile(path) as z:
- for rel in ['app/specific/ClassicChatPresentation.js','app/styles/presentation.css','app/styles/fonts.css','app/fonts/Inter-latin.woff2','app/fonts/Inter-cyrillic.woff2','app/fonts/Inter-LICENSE.txt','app/specific/ChatLive.js','app/specific/ChatVod.js','app/specific/ClassicPlayback.js','app/specific/Play.js','app/specific/Main.js','app/specific/ClassicFeatures.js','app/specific/ClassicChat.js','app/specific/PlayChannelPoints.js','app/specific/PlayAutoClaim.js','app/specific/PlayRaid.js','app/styles/chat-features.css','app/specific/ClassicPages.js','app/styles/pages.css','app/styles/player.css','app/specific/ClassicShell.js','app/styles/shell.css','app/specific/PlayClassic.js','app/styles/classic.css','app/thirdparty/qrcode.js','app/thirdparty/qrcode-LICENSE','app/specific/AddUser.js']:
+ for rel in ['app/specific/ClassicUpdates.js','app/specific/ClassicMulti.js','app/styles/multi.css','app/general/classic-version.js','app/specific/ClassicChatPresentation.js','app/styles/presentation.css','app/styles/fonts.css','app/fonts/Inter-latin.woff2','app/fonts/Inter-cyrillic.woff2','app/fonts/Inter-LICENSE.txt','app/specific/ChatLive.js','app/specific/ChatVod.js','app/specific/ClassicPlayback.js','app/specific/Play.js','app/specific/Main.js','app/specific/ClassicFeatures.js','app/specific/ClassicChat.js','app/specific/PlayChannelPoints.js','app/specific/PlayAutoClaim.js','app/specific/PlayRaid.js','app/styles/chat-features.css','app/specific/ClassicPages.js','app/styles/pages.css','app/styles/player.css','app/specific/ClassicShell.js','app/styles/shell.css','app/specific/PlayClassic.js','app/styles/classic.css','app/thirdparty/qrcode.js','app/thirdparty/qrcode-LICENSE','app/specific/AddUser.js']:
   assert z.read('assets/'+rel)==(root/rel).read_bytes(),rel
  with zipfile.ZipFile(io.BytesIO(z.read('assets/classic-source.zip'))) as src:
   assert src.read('app/specific/PlayClassic.js')==(root/'app/specific/PlayClassic.js').read_bytes()

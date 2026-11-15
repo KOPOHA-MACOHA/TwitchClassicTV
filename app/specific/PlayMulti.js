@@ -97,6 +97,7 @@ function Play_Multi_SetPanel() {
 }
 
 function Play_Multi_UnSetPanelDiv(checkChat) {
+    ClassicMulti_close();
     UserLiveFeed_SetFeedPicText();
     Main_ShowElement('stream_info');
     Main_HideElement('stream_info_multi');
@@ -362,7 +363,7 @@ function Play_MultiStartQualitySuccess(pos, theUrl, playlist, PreventCleanQualit
     } else {
         //delay the call to prevent multiple OSInterface call that end in java in a MainThreadHandler.post call
         Main_setTimeout(function () {
-            if (Play_MultiArray[pos].data.length > 0 && !Main_isStopped && Play_isOn && Play_MultiEnable) {
+            if (Play_MultiArray[pos].data.length > 0 && Play_MultiArray[pos].AutoUrl === theUrl && !Main_isStopped && Play_isOn && Play_MultiEnable) {
                 OSInterface_StartMultiStream(pos, theUrl, playlist);
             }
         }, 25);

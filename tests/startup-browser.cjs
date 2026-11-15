@@ -1,7 +1,7 @@
 const {chromium} = require('playwright-core'),
     assert = require('assert/strict');
 (async () => {
-    const browser = await chromium.launch({executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
+    const browser = await chromium.launch({executablePath: process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()), headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
     const page = await browser.newPage({viewport: {width: 1920, height: 1080}}),
         errors = [];
     page.on('pageerror', e => {

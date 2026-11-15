@@ -1,7 +1,7 @@
 const {chromium}=require('playwright-core'),assert=require('assert/strict'),fs=require('fs');
-const {PNG}=require('/workspace/smarttv-test-tools/node_modules/pngjs');const jsQR=require('/workspace/smarttv-test-tools/node_modules/jsqr');
+const {PNG}=require('pngjs');const jsQR=require('jsqr');
 (async()=>{
- const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});const page=await browser.newPage({viewport:{width:1920,height:1080},locale:'ru-RU'}),errors=[],requests=[];
+ const browser=await chromium.launch({executablePath: process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()),headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});const page=await browser.newPage({viewport:{width:1920,height:1080},locale:'ru-RU'}),errors=[],requests=[];
  page.on('pageerror',e=>errors.push(String(e)));
  const uri='https://www.twitch.tv/activate?public=true&device-code=ABC12345';
  await page.route('**/*',r=>{
@@ -48,7 +48,7 @@ const {PNG}=require('/workspace/smarttv-test-tools/node_modules/pngjs');const js
  await page.evaluate(()=>{Play_isOn=false;Main_ExitCurrent(Main_values.Main_Go);AddUser_init();});await page.locator('.qr-login-code svg').waitFor();
  assert.equal(await page.evaluate(()=>AddUser_DeviceCodeTimeout),7);
  await page.evaluate(()=>{Main_HideWarningDialog();Main_HideWelcomeDialog();Main_HideAboutDialog();});
- const png=PNG.sync.read(await page.locator('.qr-login-code').screenshot({path:'/workspace/SmartTwitchTV/tests/login-qr.png'}));const decoded=jsQR(new Uint8ClampedArray(png.data),png.width,png.height);assert.ok(decoded,'QR is decodable');assert.equal(decoded.data,uri);assert.ok(!decoded.data.includes('private-device-fixture'));
+ const png=PNG.sync.read(await page.locator('.qr-login-code').screenshot({path:'tests/login-qr.png'}));const decoded=jsQR(new Uint8ClampedArray(png.data),png.width,png.height);assert.ok(decoded,'QR is decodable');assert.equal(decoded.data,uri);assert.ok(!decoded.data.includes('private-device-fixture'));
  await page.screenshot({path:'/workspace/SmartTwitchTV/tests/login-screen.png'});
  await page.evaluate(()=>{AddUser_DeviceCodeExpiresAt=Date.now()-1;AddUser_getCodeCheck(0);});assert.ok((await page.locator('#add_user_text_counter').textContent()).includes('Код истёк'));assert.equal(await page.evaluate(()=>AddUser_DeviceCode),null);
  await page.evaluate(()=>AddUser_handleKeyDown({keyCode:KEY_ENTER}));await page.waitForFunction(()=>AddUser_DeviceCode!==null);assert.ok(requests.filter(r=>r==='device').length>=2);

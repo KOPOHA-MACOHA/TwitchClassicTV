@@ -5,6 +5,7 @@ var ClassicFeatures_defaults = {
     raid_switch: true,
     chat_images: false,
     emote_modifiers: true,
+    connected_chatters: true,
     emote_proxy: false
 };
 function ClassicFeatures_enabled(key) {
@@ -13,6 +14,10 @@ function ClassicFeatures_enabled(key) {
 }
 function ClassicFeatures_set(key, value) {
     Main_setItem('classic_feature_' + key, value ? 'true' : 'false');
+    if (key === 'connected_chatters') {
+        [0, 1].forEach(ClassicChatPresentation_refreshCount);
+        ClassicChatPresentation_overlayCount();
+    }
     if (key === 'raid_switch') {
         if (value && Play_isOn) PlayRaid_SetChannel(Play_data.data[14]);
         else PlayRaid_Close();
@@ -35,6 +40,13 @@ function ClassicFeatures_menu(kind) {
                           'emote_modifiers',
                           ru ? 'Модификаторы смайлов' : 'Emote modifiers',
                           ru ? 'Растяжение, отражение, поворот и анимационные эффекты' : 'Stretch, flip, rotate and animate emotes'
+                      ],
+                      [
+                          'connected_chatters',
+                          ru ? 'Подключённые к чату в скобках' : 'Connected chat users in parentheses',
+                          ru
+                              ? 'Рядом со зрителями. Включает ботов и пользователей без видео.'
+                              : 'Beside viewers. Includes bots and users without video.'
                       ],
                       [
                           'chat_images',

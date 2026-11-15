@@ -524,6 +524,7 @@ function Play_UpdateMainStreamDiv() {
         );
     }
     streamViewers = Play_data.data[13];
+    ClassicChatPresentation_overlayCount();
 
     if (Play_data.data[9]) {
         Play_LoadLogo(Main_getElementById('stream_info_icon'), Play_data.data[9]);
@@ -1339,6 +1340,7 @@ function Play_timeDay(time) {
 }
 
 function Play_shutdownStream() {
+    ClassicMulti_close();
     //Main_Log('Play_shutdownStream ' + Play_isOn);
 
     if (!Main_IsOn_OSInterface) {

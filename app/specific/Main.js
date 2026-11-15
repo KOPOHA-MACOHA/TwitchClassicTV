@@ -1133,6 +1133,7 @@ var Main_checkWebVersionResumeId;
 var Main_HasUpdate;
 var Main_Ischecking;
 function Main_CheckUpdate(forceUpdate) {
+    if (typeof ClassicBuild !== 'undefined') { ClassicUpdates_check(forceUpdate); return; }
     if (checkUpdates) {
         if (Main_HasUpdate && Main_isUpdateDialogVisible() && Settings_value.update_background.defaultValue && !forceUpdate) return;
 
@@ -1214,6 +1215,7 @@ function Main_WarnUpdate(web, skipShowUpdateDialog) {
 }
 
 function Main_needUpdate(check_version) {
+    if (typeof ClassicBuild !== 'undefined') { version.publishVersionCode = ClassicBuild.code; version.WebVersion = 'Twitch Classic ' + ClassicBuild.name; return false; }
     var versionArray = check_version.split('.'),
         MajorVersion = versionArray[0] + '.' + versionArray[1],
         MinVersion = parseInt(versionArray[2]),
@@ -1311,7 +1313,7 @@ function Main_UpdateDialogKeyEnter() {
                 Main_RefreshPage();
             } else {
                 Main_showLoadDialog();
-                var fromPlay = OSInterface_getInstallFromPLay();
+                var fromPlay = typeof ClassicBuild === 'undefined' && OSInterface_getInstallFromPLay();
 
                 OSInterface_showToast(fromPlay ? STR_UPDATE_PLAY : STR_UPDATE_START);
 

@@ -1,7 +1,12 @@
 const {chromium} = require('playwright-core'),
     assert = require('assert/strict');
 (async () => {
-    const browser = await chromium.launch({executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
+    const browser = await chromium.launch({
+        executablePath:
+            process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()),
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage']
+    });
     const page = await browser.newPage({viewport: {width: 1920, height: 1080}, locale: 'ru-RU'}),
         errors = [];
     page.on('pageerror', e => errors.push(String(e)));
@@ -181,6 +186,31 @@ const {chromium} = require('playwright-core'),
             PlayClassic_applyMode();
         });
         assert.equal(await page.evaluate(() => document.getElementById('chat_loggedin0').parentNode.id), 'classic_chat_header0');
+        // The extension's parentheses mean connected chat users, not extra video viewers.
+        await page.evaluate(() => {
+            Settings_value.show_chatters.defaultValue = 2;
+            Chat_Id[0] = 900;
+            ClassicFeatures_set('connected_chatters', true);
+            ClassicChatPresentation_resetCounts(0);
+            ChatLive_loadChattersViewersSuccess(JSON.stringify({data: [{viewer_count: 1800}]}), 0, 900);
+            ChatLive_loadChattersSuccess({status: 200, responseText: JSON.stringify({data: {channels: [{chatters: {count: 932}}]}})}, 0, 900);
+        });
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '1,800(932)');
+        assert.match(await page.locator('#chat_loggedin0').getAttribute('aria-label'), /Подключены к чату: 932/);
+        await page.evaluate(() => {
+            ChatLive_loadChattersSuccess({status: 200, responseText: JSON.stringify({data: {channels: [{chatters: {count: 999}}]}})}, 0, 899);
+            ChatLive_loadChattersViewersSuccess(JSON.stringify({data: [{viewer_count: 2000}]}), 0, 900);
+        });
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2,000(932)');
+        await page.evaluate(() => ClassicFeatures_set('connected_chatters', false));
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2,000');
+        await page.evaluate(() => {
+            ClassicFeatures_set('connected_chatters', true);
+            ClassicChatPresentation_resetCounts(0);
+            ChatLive_loadChattersSuccess({status: 200, responseText: JSON.stringify({data: {channels: [{chatters: {count: 0}}]}})}, 0, 900);
+            ChatLive_loadChattersViewersSuccess(JSON.stringify({data: [{viewer_count: 2001}]}), 0, 900);
+        });
+        assert.equal((await page.locator('#chat_loggedin0').innerText()).replace(/\s/g, ''), '2,001(0)');
         await page.evaluate(() => ChatLive_resetChatters(0));
         assert.equal(await page.locator('#chat_loggedin0').isVisible(), false);
         assert.deepEqual(errors, []);

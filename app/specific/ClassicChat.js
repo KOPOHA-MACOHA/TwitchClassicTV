@@ -49,6 +49,18 @@ function ClassicChat_render(chunks, chatNumber, bits) {
         pending = [];
     }
     function appendEmote(html, zero) {
+        // z! is a zero-width overlay on the previous emote, never a zero-size
+        // inline box at the start of a message (which can paint over the nick).
+        if (
+            pending.some(function (token) {
+                return ClassicChat_modifiers[token] === 'zero-space';
+            })
+        ) {
+            zero = true;
+            pending = pending.filter(function (token) {
+                return ClassicChat_modifiers[token] !== 'zero-space';
+            });
+        }
         if (zero && last) {
             pending.forEach(function (token) {
                 html = '<span class="classic-emote-effect classic-emote-' + ClassicChat_modifiers[token] + '">' + html + '</span>';

@@ -1,7 +1,12 @@
 const {chromium} = require('playwright-core');
 const assert = require('assert/strict');
 (async () => {
-    const browser = await chromium.launch({executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']});
+    const browser = await chromium.launch({
+        executablePath:
+            process.env.CHROMIUM_PATH || (require('fs').existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : chromium.executablePath()),
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage']
+    });
     const page = await browser.newPage({viewport: {width: 1920, height: 1080}}),
         errors = [];
     page.on('pageerror', e => errors.push(String(e)));
@@ -19,6 +24,51 @@ const assert = require('assert/strict');
         await page.goto('http://127.0.0.1:8765/app/index.html?asset-test=1');
         await page.waitForFunction(() => typeof ClassicChat_render === 'function' && typeof Main_values !== 'undefined' && !!Main_values.Main_Go);
         await page.keyboard.press('Escape');
+        // Huge zero-width layers and z! must never paint over the nickname.
+        for (const message of ['w! Base Overlay', 'Base Overlay ffzW', 'Base z! Overlay', 'z! Base', 'Overlay']) {
+            const bounds = await page.evaluate(async message => {
+                ClassicFeatures_set('emote_modifiers', true);
+                const image =
+                    'data:image/svg+xml,' +
+                    encodeURIComponent(
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#9146ff"/></svg>'
+                    );
+                const base = '<img class="emoticon" style="width:40px;height:40px" src="' + image + '">';
+                extraEmotes[0] = {Base: {chat_div: base}, Overlay: {chat_div: base.replace('width:40px', 'width:800px'), chat_div_zero: base}};
+                const fixture = document.createElement('div');
+                fixture.id = 'zero_geometry';
+                fixture.style.cssText = 'position:fixed;left:40px;top:40px;font:24px Inter;background:#18181b;color:white;z-index:999';
+                fixture.innerHTML = '<span id="zero_nick">Nickname: </span>' + ClassicChat_render([message], 0, 0);
+                document.body.appendChild(fixture);
+                await Promise.all([...fixture.querySelectorAll('img')].map(i => i.decode()));
+                const nick = fixture.querySelector('#zero_nick').getBoundingClientRect(),
+                    stack = fixture.querySelector('.classic-emote-stack');
+                const rect = e => {
+                    const r = e.getBoundingClientRect();
+                    return {left: r.left, right: r.right, width: r.width};
+                };
+                const result = {
+                    nickRight: nick.right,
+                    images: [...fixture.querySelectorAll('img')].map(rect),
+                    stack: stack ? rect(stack) : null,
+                    zero: fixture.querySelectorAll('.classic-emote-zero-space').length
+                };
+                return result;
+            }, message);
+            assert.equal(bounds.zero, 0, message);
+            for (const image of bounds.images) assert.ok(image.left >= bounds.nickRight - 1, JSON.stringify({message, bounds}));
+            if (bounds.stack) {
+                assert.equal(bounds.images.length, 2);
+                assert.ok(Math.abs(bounds.images[0].width - bounds.images[1].width) < 1, JSON.stringify({message, bounds}));
+                assert.ok(
+                    bounds.images[1].left >= bounds.stack.left - 1 && bounds.images[1].right <= bounds.stack.right + 1,
+                    JSON.stringify({message, bounds})
+                );
+                if (message.includes('w!') || message.includes('ffzW'))
+                    assert.ok(Math.abs(bounds.stack.width - 80) < 1, JSON.stringify({message, bounds}));
+            }
+            await page.evaluate(() => document.getElementById('zero_geometry').remove());
+        }
         const chat = await page.evaluate(() => {
             Main_HideWelcomeDialog();
             Main_HideWarningDialog();
@@ -106,18 +156,19 @@ const assert = require('assert/strict');
             Main_showSettings();
             ClassicFeatures_menu('chat');
         });
-        assert.equal(await page.locator('#classic_preferences_rows button').count(), 3);
+        assert.equal(await page.locator('#classic_preferences_rows button').count(), 4);
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicFeatures_enabled('emote_modifiers')), false);
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicFeatures_enabled('emote_modifiers')), true);
         await page.keyboard.press('ArrowDown');
         await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('ArrowDown');
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicFeatures_enabled('emote_proxy')), true);
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicFeatures_enabled('emote_proxy')), false);
-        assert.equal(await page.evaluate(() => document.activeElement === document.querySelectorAll('#classic_preferences_rows button')[2]), true);
+        assert.equal(await page.evaluate(() => document.activeElement === document.querySelectorAll('#classic_preferences_rows button')[3]), true);
         await page.keyboard.press('Escape');
         await page.keyboard.press('Escape');
         // Exercise the real native callback-name bridge, not a replacement FullxmlHttpGet.

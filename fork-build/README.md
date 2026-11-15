@@ -1,4 +1,4 @@
-# Twitch Classic 0.11
+# Twitch Classic 0.12
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -86,3 +86,7 @@ Following is treated as a root screen by header Back handling. Back from its car
 ## 0.11 exclusive player focus
 
 Clear focus from all toolbar controls before assigning the current selection. Previously the cursor was updated before the old single-control clear, leaving the previous control highlighted. A regression test reproduces that failure and asserts exactly one focused element, matching the cursor, after each horizontal/vertical remote navigation step across live, VOD and clips including previous/next and timeline return.
+
+## 0.12 repository migration, multistream and chat geometry
+
+Migrated the full fork to KOPOHA-MACOHA/TwitchClassicTV with a separate baseline 0.11 commit. Added a contained native-compatible multistream picker, native HLS named callbacks, cancellation and startup watchdog, four-slot operations and remote input. Bounded zero-width layers to the base emote before applying group modifiers; z! at the start retains a normal visible emote rather than painting over the nick. Added an optional connected-to-chat count (Twitch chatters.count, not proof of video viewing). Added portable browser tests, pinned public tool bootstrap, private-key-only release automation and fork-owned APK update checks. See docs/RELEASES.md for signing setup and limitations.

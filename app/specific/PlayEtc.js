@@ -1690,6 +1690,7 @@ function Play_handleKeyDown(e) {
         return;
     }
 
+    if (ClassicMulti_key(e)) return;
     if (PlayClassic_revealOnInput(e, 1)) return;
     if (PlayClassic_navigateRow(e, 1)) return;
 
@@ -2810,6 +2811,7 @@ function Play_MakeControls() {
                     Play_MultiArray[0].data[3],
                     !Main_A_includes_B(Play_MultiArray[0].data[1], STR_USER_HOSTED_BY) ? Play_MultiArray[0].data[15] : 'HOSTING'
                 );
+                if (PlayClassic_enabled()) ClassicMulti_open();
             } else {
                 OSInterface_DisableMultiStream();
                 Play_Multi_UnSetPanel(shutdown);

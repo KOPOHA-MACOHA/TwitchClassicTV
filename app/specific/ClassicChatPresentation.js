@@ -26,7 +26,7 @@ function ClassicChatPresentation_apply() {
                 number,
                 counter.dataset.count === '' ? null : Number(counter.dataset.count),
                 counter.dataset.countType,
-                counter.title
+                counter.dataset.countLabel || counter.title
             );
         if (modern) document.getElementById('chat_container_name' + number).style.top = '';
     });
@@ -36,7 +36,8 @@ function ClassicChatPresentation_counter(number, count, type, label) {
     if (!counter) return;
     counter.dataset.count = count === null ? '' : String(count);
     counter.dataset.countType = type;
-    counter.title = String(label).replace(/&nbsp;/g, ' ');
+    counter.dataset.countLabel = String(label).replace(/&nbsp;/g, ' ');
+    counter.title = counter.dataset.countLabel;
     counter.setAttribute('aria-label', counter.title);
     if (!PlayClassic_enabled()) {
         counter.innerHTML = label;
@@ -55,6 +56,15 @@ function ClassicChatPresentation_counter(number, count, type, label) {
     value.textContent = count === null ? '…' : Main_formatNumber(count);
     counter.appendChild(icon);
     counter.appendChild(value);
+    if (type === 'viewers' && count !== null && counter.dataset.connectedCount !== undefined && ClassicFeatures_enabled('connected_chatters')) {
+        var connected = document.createElement('span');
+        connected.className = 'classic-chat-connected-count';
+        connected.textContent = ' (' + Main_formatNumber(Number(counter.dataset.connectedCount)) + ')';
+        counter.appendChild(connected);
+        label =
+            counter.dataset.countLabel + '; ' + (ClassicShell_ru() ? 'Подключены к чату: ' : 'Connected to chat: ') + counter.dataset.connectedCount;
+    }
+
     counter.title = String(label).replace(/&nbsp;/g, ' ');
     counter.setAttribute('aria-label', counter.title);
     counter.dataset.countType = type;
@@ -66,4 +76,50 @@ function ClassicChatPresentation_nameColor(color, name) {
         text = String(name || '').toLowerCase();
     for (var i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
     return defaultColors[hash % defaultColors.length];
+}
+
+function ClassicChatPresentation_refreshCount(number) {
+    var counter = document.getElementById('chat_loggedin' + number);
+    if (counter && counter.hasAttribute('data-count'))
+        ClassicChatPresentation_counter(
+            number,
+            counter.dataset.count === '' ? null : Number(counter.dataset.count),
+            counter.dataset.countType,
+            counter.dataset.countLabel || ''
+        );
+}
+function ClassicChatPresentation_resetCounts(number) {
+    var counter = document.getElementById('chat_loggedin' + number);
+    if (counter) delete counter.dataset.connectedCount;
+    if (!number) ClassicChatPresentation_overlayCount();
+}
+function ClassicChatPresentation_connected(number, count) {
+    if (!Number.isFinite(count) || count < 0) return;
+    var counter = document.getElementById('chat_loggedin' + number);
+    if (!counter) return;
+    counter.dataset.connectedCount = String(count);
+    ClassicChatPresentation_refreshCount(number);
+    if (!number) ClassicChatPresentation_overlayCount();
+}
+function ClassicChatPresentation_overlayCount() {
+    var target = document.getElementById('stream_live_viewers'),
+        counter = document.getElementById('chat_loggedin0');
+    if (!target) return;
+    var old = target.querySelector('.classic-chat-connected-count');
+    if (old) old.remove();
+    if (
+        !counter ||
+        counter.dataset.connectedCount === undefined ||
+        !ClassicFeatures_enabled('connected_chatters') ||
+        !PlayClassic_enabled() ||
+        !Play_isOn ||
+        Play_MultiEnable ||
+        String(Play_data.data[14]) !== String(ChatLive_selectedChannel_id[0])
+    )
+        return;
+    var extra = document.createElement('span');
+    extra.className = 'classic-chat-connected-count';
+    extra.textContent = ' (' + Main_formatNumber(Number(counter.dataset.connectedCount)) + ')';
+    extra.title = ClassicShell_ru() ? 'Подключены к чату' : 'Connected to chat';
+    target.appendChild(extra);
 }

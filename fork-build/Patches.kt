@@ -10,6 +10,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import java.util.zip.ZipInputStream
 import org.w3c.dom.Element
+import java.util.Properties
 
 private val compatibility = Compatibility(packageName="com.fgl27.twitch", name="SmartTwitchTV 3.0.379")
 private val uiAssets = resourcePatch {
@@ -61,8 +62,9 @@ val identity = resourcePatch(name="Classic fork application identity",descriptio
             val manifest=doc.documentElement;val old=manifest.getAttribute("package");val appId="org.tvmod.classic"
             check(old=="com.fgl27.twitch")
             manifest.setAttribute("package",appId)
-            manifest.setAttribute("android:versionName","3.0.379-classic0.11")
-            manifest.setAttribute("android:versionCode","390")
+            val build = Properties().apply { object {}.javaClass.classLoader.getResourceAsStream("classic-build.properties")!!.use { load(it) } }
+            manifest.setAttribute("android:versionName",build.getProperty("versionName"))
+            manifest.setAttribute("android:versionCode",build.getProperty("versionCode"))
             (doc.getElementsByTagName("application").item(0) as Element).setAttribute("android:label","Twitch Classic")
             val activities=doc.getElementsByTagName("activity")
             for(i in 0 until activities.length){val a=activities.item(i) as Element;if(a.getElementsByTagName("intent-filter").length>0)a.setAttribute("android:label","Twitch Classic")}
