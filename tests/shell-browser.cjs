@@ -476,8 +476,12 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
             assert.equal(await page.locator('.following-stream-card').count(), 1);
         }
         const sections = await page.locator('#classic_following_page h2').allTextContents();
-        assert.deepEqual(sections, ['В эфире', 'Не в эфире']);
+        assert.deepEqual(sections, ['Продолжить просмотр', 'В эфире', 'Не в эфире']);
         await page.screenshot({path: 'tests/following-classic.png'});
+        await page.evaluate(() => {
+            FollowingClassic.cursor = FollowingClassic.rows.findIndex(row => row.section === 'live');
+            FollowingClassic_focus(true);
+        });
         const playCount = await page.evaluate(() => window.openCalls || 0);
         await page.keyboard.down('Enter');
         await page.waitForFunction(
@@ -492,7 +496,10 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         assert.equal(await page.locator('.following-channel-card').count(), 1);
 
         await page.keyboard.press('ArrowUp');
+        assert.equal(await page.evaluate(() => FollowingClassic.rows[FollowingClassic.cursor].key), 'continue:retry');
+        await page.keyboard.press('ArrowUp');
         assert.equal(await page.evaluate(() => ClassicShell_navActive), true);
+        await page.keyboard.press('ArrowDown');
         await page.keyboard.press('ArrowDown');
         await page.keyboard.press('ArrowDown');
         assert.equal(await page.evaluate(() => FollowingClassic.rows[FollowingClassic.cursor].section), 'offline');

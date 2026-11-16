@@ -1,11 +1,29 @@
-/* Twitch account Continue Watching shelf. GPL-3.0-or-later. */
-var ClassicContinue = {account: null, updated: 0, items: [], loading: false, error: false, cached: false, menu: null, request: 0};
+/* Twitch account history and Continue Watching. GPL-3.0-or-later. */
+var ClassicContinue = {
+    account: null,
+    updated: 0,
+    items: [],
+    all: [],
+    loading: false,
+    error: false,
+    cached: false,
+    menu: null,
+    request: 0,
+    status: ''
+};
+// Match the official Following query first; separately request a larger, unfiltered account window.
+// ViewedVideosConnection has no cursor/pageInfo: never pretend this is a lifetime archive.
+var ClassicContinue_fields =
+    'id title lengthSeconds status isDeleted previewThumbnailURL(width:640,height:360) createdAt viewCount language owner{id login displayName profileImageURL(width:70)} self{viewingHistory{position updatedAt}}';
 var ClassicContinue_query =
-    'query ClassicContinueWatching($first:Int!){currentUser{id viewedVideos(first:$first){edges{history{position updatedAt}node{id title lengthSeconds isDeleted status previewThumbnailURL(width:640,height:360) createdAt viewCount language owner{id login displayName profileImageURL(width:70)}}}}}}';
+    'query ClassicContinueWatching($first:Int!,$excludeHidden:Boolean!){currentUser:user{id viewedVideos(first:$first,excludeHiddenChannels:$excludeHidden){edges{history{position updatedAt}node{' +
+    ClassicContinue_fields +
+    '}}}}}';
+var ClassicContinue_fullQuery = ClassicContinue_query.replace('currentUser:user{', 'currentUser{');
 function ClassicContinue_invalidate() {
     ClassicContinue.updated = 0;
 }
-function ClassicContinue_parse(user, account) {
+function ClassicContinue_parse(user, account, includeCompleted) {
     if (!user || String(user.id) !== String(account) || !user.viewedVideos || !Array.isArray(user.viewedVideos.edges)) throw Error('History');
     var hidden = {};
     try {
@@ -13,57 +31,119 @@ function ClassicContinue_parse(user, account) {
     } catch (error) {
         /* Empty hidden list. */
     }
-    var seen = {};
-    return user.viewedVideos.edges
-        .slice(0, 50)
-        .map(function (edge) {
-            if (!edge || !edge.node || !edge.history) return null;
-            var video = edge.node,
-                position = edge.history.position,
-                duration = video.lengthSeconds,
-                id = String(video.id || '');
-            if (
-                !/^\d+$/.test(id) ||
-                seen[id] ||
-                video.isDeleted ||
-                video.status === 'FAILED' ||
-                video.status === 'UNPROCESSED' ||
-                typeof position !== 'number' ||
-                !isFinite(position) ||
-                position <= 0 ||
-                typeof duration !== 'number' ||
-                !isFinite(duration) ||
-                duration <= 0 ||
-                duration - position <= Math.min(30, duration * 0.02)
-            )
-                return null;
-            seen[id] = true;
-            var updated = Date.parse(edge.history.updatedAt) || 0,
-                hide = hidden[id];
-            if (hide && hide.position === position && hide.updatedAt === updated) return null;
-            var owner = video.owner || {};
-            return {
-                id: id,
-                title: String(video.title || ''),
-                duration: duration,
-                position: Math.floor(position),
-                updatedAt: updated,
-                image: video.previewThumbnailURL || '',
-                createdAt: video.createdAt || '',
-                views: Number(video.viewCount) || 0,
-                language: video.language || '',
-                channel: {
-                    id: String(owner.id || ''),
-                    login: String(owner.login || ''),
-                    displayName: String(owner.displayName || owner.login || ''),
-                    image: owner.profileImageURL || ''
-                }
-            };
+    var records = {};
+    user.viewedVideos.edges.slice(0, 2000).forEach(function (edge) {
+        if (!edge || !edge.node) return;
+        var video = edge.node,
+            history = edge.history,
+            self = video.self && video.self.viewingHistory;
+        if (
+            !history ||
+            typeof history.position !== 'number' ||
+            !isFinite(history.position) ||
+            (self && (Date.parse(self.updatedAt) || 0) > (Date.parse(history.updatedAt) || 0))
+        )
+            history = self;
+        var position = history && history.position,
+            duration = Number(video.lengthSeconds) || 0,
+            id = String(video.id || '');
+        if (
+            !/^\d+$/.test(id) ||
+            video.isDeleted ||
+            video.status === 'FAILED' ||
+            video.status === 'UNPROCESSED' ||
+            typeof position !== 'number' ||
+            !isFinite(position) ||
+            position < 0
+        )
+            return;
+        var updated = Date.parse(history.updatedAt) || 0,
+            previous = records[id];
+        if (previous && previous.updatedAt >= updated) return;
+        var owner = video.owner || video.creator || {};
+        records[id] = {
+            id: id,
+            title: String(video.title || ''),
+            duration: isFinite(duration) ? Math.max(0, duration) : 0,
+            position: Math.floor(position),
+            updatedAt: updated,
+            recording: video.status === 'RECORDING',
+            image: video.previewThumbnailURL || '',
+            createdAt: video.createdAt || '',
+            views: Number(video.viewCount) || 0,
+            language: video.language || '',
+            channel: {
+                id: String(owner.id || ''),
+                login: String(owner.login || ''),
+                displayName: String(owner.displayName || owner.login || ''),
+                image: owner.profileImageURL || ''
+            }
+        };
+    });
+    return Object.keys(records)
+        .map(function (id) {
+            return records[id];
         })
-        .filter(Boolean)
+        .filter(function (item) {
+            if (includeCompleted) return true;
+            if (!item.position) return false;
+            var hide = hidden[item.id];
+            return (
+                !(hide && hide.position === item.position && hide.updatedAt === item.updatedAt) &&
+                (!item.duration || item.recording || item.duration - item.position > Math.min(30, item.duration * 0.02))
+            );
+        })
         .sort(function (a, b) {
             return b.updatedAt - a.updatedAt;
         });
+}
+function ClassicContinue_data(item) {
+    return [
+        item.image,
+        item.channel.displayName,
+        Main_videoCreatedAt(item.createdAt),
+        '',
+        Main_formatNumber(item.views),
+        '[' + item.language.toUpperCase() + ']',
+        item.channel.login,
+        item.id,
+        null,
+        item.language,
+        item.title,
+        item.duration,
+        item.createdAt,
+        item.views,
+        item.channel.id,
+        item.channel.image,
+        ''
+    ];
+}
+function ClassicContinue_import(account) {
+    var history = Main_values_History_data[account];
+    if (!history || !Array.isArray(history.vod) || ScreenObj[Main_HistoryVod].histPosX[1]) return;
+    ClassicContinue.all.forEach(function (item) {
+        var existing = history.vod.find(function (row) {
+            return String(row.id) === item.id;
+        });
+        var data = ClassicContinue_data(item);
+        if (!existing) {
+            existing = {id: item.id};
+            history.vod.push(existing);
+        }
+        existing.data = data;
+        existing.date = item.updatedAt;
+        existing.name = item.channel.login.toLowerCase();
+        existing.game = '';
+        existing.views = item.views;
+        existing.created_at = Date.parse(item.createdAt) || 0;
+        existing.watched = item.position;
+        Main_history_Watched_Obj[item.id] = item.duration ? Math.min(100, (100 * item.position) / item.duration) : 0;
+    });
+    history.vod.sort(function (a, b) {
+        return b.date - a.date;
+    });
+    history.vod = history.vod.slice(0, 2000);
+    Main_setHistoryItem();
 }
 function ClassicContinue_load(force) {
     if (!FollowingClassic.active || !AddUser_UserHasToken() || !Main_isScene1DocVisible()) return;
@@ -74,52 +154,98 @@ function ClassicContinue_load(force) {
     ClassicContinue.loading = true;
     ClassicContinue.error = false;
     ClassicContinue.cached = false;
-    var request = ++ClassicContinue.request;
-    // A failed request may use this account's last shelf, never another account's data.
+    ClassicContinue.status = '';
+    var request = ++ClassicContinue.request,
+        edges = [],
+        successes = 0,
+        received = [];
     ClassicContinue.items = [];
+    ClassicContinue.all = [];
+    function apply(user) {
+        ClassicContinue.all = ClassicContinue_parse(user, account, true);
+        ClassicContinue.items = ClassicContinue_parse(user, account, false);
+    }
     try {
         var stored = JSON.parse(localStorage.getItem('classic_continue_cache_' + account));
-        if (stored && Array.isArray(stored.edges)) ClassicContinue.items = ClassicContinue_parse({id: account, viewedVideos: stored}, account);
+        if (stored && Array.isArray(stored.edges)) apply({id: account, viewedVideos: stored});
     } catch (error) {
         /* No offline cache. */
     }
-    HttpGetSetUserHeader();
-    var headers = Main_OAuth_User_Headers.concat([
-        ['Content-Type', 'application/json'],
-        ['Cache-Control', 'no-cache']
-    ]);
-    ClassicPages_request(
-        FollowingClassic,
-        PlayClip_BaseUrl,
-        headers,
-        'POST',
-        JSON.stringify({operationName: 'ClassicContinueWatching', query: ClassicContinue_query, variables: {first: 50}}),
-        function (result) {
-            if (request !== ClassicContinue.request || !AddUser_UserHasToken() || String(AddUser_UsernameArray[0].id) !== account) return;
-            var user = result.data && result.data.currentUser;
-            ClassicContinue.items = ClassicContinue_parse(user, account);
-            ClassicContinue.loading = false;
-            ClassicContinue.error = false;
-            ClassicContinue.cached = false;
-            try {
-                Main_setItem('classic_continue_cache_' + account, JSON.stringify(user.viewedVideos));
-            } catch (error) {
-                /* Optional cache. */
-            }
-            FollowingClassic_render();
-        },
-        function () {
-            if (request !== ClassicContinue.request || ClassicContinue.account !== account) return;
-            ClassicContinue.loading = false;
-            ClassicContinue.error = true;
-            ClassicContinue.cached = ClassicContinue.items.length > 0;
-            FollowingClassic_render();
+    function current() {
+        return request === ClassicContinue.request && AddUser_UserHasToken() && String(AddUser_UsernameArray[0].id) === account;
+    }
+    function finish() {
+        if (!current()) return;
+        ClassicContinue.loading = false;
+        ClassicContinue.error = !successes;
+        ClassicContinue.cached = !successes && ClassicContinue.items.length > 0;
+        if (successes) {
+            var user = {id: account, viewedVideos: {edges: edges}};
+            apply(user);
+            ClassicContinue_import(account);
+            Main_setItem('classic_continue_cache_' + account, JSON.stringify(user.viewedVideos));
         }
-    );
+        ClassicContinue.status =
+            (ClassicShell_ru() ? 'Twitch: получено ' : 'Twitch: received ') +
+            received.join(' / ') +
+            (ClassicShell_ru() ? '; записей ' : '; videos ') +
+            ClassicContinue.all.length +
+            (ClassicShell_ru() ? '; незаконченных ' : '; unfinished ') +
+            ClassicContinue.items.length;
+        Main_setItem(
+            'classic_continue_status_' + account,
+            JSON.stringify({at: Date.now(), text: ClassicContinue.status, error: ClassicContinue.error})
+        );
+        FollowingClassic_render();
+    }
+    function fetchHistory(expanded, limit) {
+        if (!current()) return;
+        HttpGetSetUserHeader();
+        ClassicPages_request(
+            FollowingClassic,
+            PlayClip_BaseUrl,
+            Main_OAuth_User_Headers.concat([
+                ['Content-Type', 'application/json'],
+                ['Cache-Control', 'no-cache']
+            ]),
+            'POST',
+            JSON.stringify({
+                operationName: 'ClassicContinueWatching',
+                query: expanded ? ClassicContinue_fullQuery : ClassicContinue_query,
+                variables: {first: expanded ? limit || 1000 : 20, excludeHidden: !expanded}
+            }),
+            function (result) {
+                if (!current()) return;
+                var user = result.data && result.data.currentUser;
+                ClassicContinue_parse(user, account, true); // A null/wrong account or missing connection is an error, never an empty success.
+                successes++;
+                received.push(user.viewedVideos.edges.length);
+                edges = edges.concat(user.viewedVideos.edges);
+                if (!expanded) {
+                    apply({id: account, viewedVideos: {edges: edges}});
+                    FollowingClassic_render();
+                    fetchHistory(true);
+                } else finish();
+            },
+            function () {
+                if (!current()) return;
+                received.push(ClassicShell_ru() ? 'ошибка' : 'error');
+                if (!expanded) fetchHistory(true);
+                else if (!limit) fetchHistory(true, 100);
+                else finish();
+            }
+        );
+    }
+    FollowingClassic_render();
+    fetchHistory(false);
+}
+function ClassicContinue_history() {
+    FollowingClassic_stopPreview();
+    FollowingClassic_exit();
+    ClassicShell_goScreen(Main_HistoryVod);
 }
 function ClassicContinue_render(panel) {
     if (ClassicContinue.account !== String(FollowingClassic.account)) return;
-    if (!ClassicContinue.items.length && !ClassicContinue.error && !ClassicContinue.loading) return;
     var ru = ClassicShell_ru(),
         section = ClassicPages_el('section', 'following-section classic-continue-section');
     section.appendChild(ClassicPages_el('h2', '', ru ? 'Продолжить просмотр' : 'Continue watching'));
@@ -133,7 +259,7 @@ function ClassicContinue_render(panel) {
         frame.appendChild(ClassicPages_image(item.image, 'following-thumb', IMG_404_VIDEO));
         var progress = ClassicPages_el('div', 'classic-continue-progress'),
             fill = ClassicPages_el('span', '');
-        fill.style.width = (100 * item.position) / item.duration + '%';
+        fill.style.width = (item.duration ? Math.min(100, (100 * item.position) / item.duration) : 0) + '%';
         progress.appendChild(fill);
         frame.appendChild(progress);
         button.appendChild(frame);
@@ -143,7 +269,9 @@ function ClassicContinue_render(panel) {
             ClassicPages_el(
                 'span',
                 'following-stream-meta',
-                (ru ? 'Осталось ' : 'Remaining ') + Play_timeS(Math.max(0, item.duration - item.position))
+                item.duration && !item.recording
+                    ? (ru ? 'Осталось ' : 'Remaining ') + Play_timeS(Math.max(0, item.duration - item.position))
+                    : (ru ? 'Просмотрено ' : 'Watched ') + Play_timeS(item.position)
             )
         );
         button.setAttribute(
@@ -166,7 +294,24 @@ function ClassicContinue_render(panel) {
                 ru ? 'Нет связи с Twitch. Показаны последние данные.' : 'Twitch is unavailable. Showing cached history.'
             )
         );
-    if (ClassicContinue.error) {
+    if (!ClassicContinue.loading && !ClassicContinue.items.length && !ClassicContinue.error)
+        section.appendChild(
+            ClassicPages_el('p', 'following-status', ru ? 'Twitch не вернул незаконченных записей.' : 'Twitch returned no unfinished videos.')
+        );
+    if (ClassicContinue.status && (!ClassicContinue.items.length || ClassicContinue.error))
+        section.appendChild(ClassicPages_el('p', 'following-status classic-history-status', ClassicContinue.status));
+    if (ClassicContinue.all.length && !ClassicContinue.loading) {
+        var history = ClassicPages_el(
+            'button',
+            'following-retry classic-history-action',
+            ru ? 'Вся доступная история Twitch' : 'All available Twitch history'
+        );
+        history.type = 'button';
+        history.onclick = ClassicContinue_history;
+        section.appendChild(history);
+        FollowingClassic.rows.push({key: 'continue:history', node: history, section: 'history'});
+    }
+    if (!ClassicContinue.loading && (ClassicContinue.error || !ClassicContinue.items.length)) {
         var retry = ClassicPages_el('button', 'following-retry', ru ? 'Обновить историю Twitch' : 'Retry Twitch history');
         retry.type = 'button';
         retry.onclick = function () {
@@ -186,25 +331,7 @@ function ClassicContinue_open(item, button) {
     button.id = screen.ids[0] + cell;
     var image = button.querySelector('img');
     if (image) image.id = screen.ids[1] + cell;
-    var data = [
-        item.image,
-        item.channel.displayName,
-        Main_videoCreatedAt(item.createdAt),
-        '',
-        Main_formatNumber(item.views),
-        '[' + item.language.toUpperCase() + ']',
-        item.channel.login,
-        item.id,
-        null,
-        item.language,
-        item.title,
-        item.duration,
-        item.createdAt,
-        item.views,
-        item.channel.id,
-        item.channel.image,
-        ''
-    ];
+    var data = ClassicContinue_data(item);
     screen.DataObj[cell] = data;
     // Do not turn a possibly stale shelf position into an explicit timestamp.
     // VOD preflight must fetch the account again before choosing the actual start.

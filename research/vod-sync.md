@@ -1,4 +1,4 @@
-# Twitch account VOD resume — 0.20
+# Twitch account VOD resume — 0.21
 
 ## Protocol evidence
 
@@ -50,3 +50,17 @@ ClassicContinue consumes the first 50 account-history entries, filters malformed
 The VOD-preview preference is migrated off once; the independent live-preview value is preserved. Opting back in retains an existing paused VOD rather than automatically calling PlayPause(true) during screen-player restoration. Automatic screen/feed VOD preview requests and replies honour the preference. Continue cards never autoplay.
 
 `tests/continue-browser.cjs` checks five-card layout, filtering, non-followed channels, keyboard navigation and local context hiding, fresh phone position on opening, cache/error/account isolation, late preview replies, paused VOD restore and live autoplay. `tests/vod-sync-browser.cjs` covers fresh account history versus stale direct/local records, Play after a phone session, persisted diagnostics and partial GraphQL responses. Tests use fixtures; the new actual authenticated read behaviour requires another device check.
+
+## 0.21 missing shelf and full available history
+
+The user reports no shelf at all in Following on 0.20. Code confirms a successful empty or fully filtered response returned before rendering the section. This explains invisibility, but does not establish why the real account response was empty/filtered. No real account/token is available here.
+
+Locally inspected current official TV JavaScript (`tv-common.js`, FollowingPage_Query and Homepage_Query) selects viewedVideos(first:20,excludeHiddenChannels:true). Following uses the authenticated default `user` root; Homepage uses currentUser. Both include history.position/updatedAt and video.self.viewingHistory.position. Source `tv-layout-module.js` filters the shelf to recent unfinished records, separate from requesting the connection.
+
+Read-only schema probes on 2026-11-16 accepted first=1000/excludeHiddenChannels on both roots without authentication (null users); after, edge.cursor and pageInfo were rejected. The number limit has not been validated against an authenticated resolver. The implementation uses the official 20-entry query plus an expanded 1000-entry account query with a 100-entry fallback. A valid partial GraphQL response remains useful. It cannot guarantee lifetime completeness: no pagination is supported.
+
+Normalisation no longer rejects positive bookmarks solely because duration is absent. Recording archives are not treated as finished when their current length trails position. The newest duplicate wins; malformed history can fall back to video.self.viewingHistory. Completed records are imported into the existing per-account VOD grid as well as unfinished entries; local TV-only records are retained, and deleted/unavailable entries are excluded. The five-card shelf remains independent of follows. Empty/error states remain visible, with raw/normalised/unfinished counts and a retry; the latest outcome is persisted per account.
+
+Official live bookmark source was also inspected: useUpdateUserViewedVideo passes a stream's archiveVideo.id with videoType VOD and position derived from Date.now minus stream.createdAt, rather than the DVR player's getPosition. This release does not implement that additional live-writing hook; receiving existing cloud bookmarks must not be described as full live-watch accounting.
+
+The browser regression covers official-empty/expanded-success, server rejection of the large window/fallback100, completed-history import, unknown duration/recording archives, self-history fallback, partial GraphQL data, always-visible empty state, wrong account and cached failure. Account interoperability remains unverified here.

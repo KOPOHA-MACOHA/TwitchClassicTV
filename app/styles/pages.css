@@ -579,3 +579,11 @@
     border-color: #9146ff;
     background: #35353b;
 }
+
+.classic-continue-section .following-status {
+    padding: 0.5vh 0;
+    margin: 0.7vh 0;
+}
+.classic-history-action {
+    margin: 1.5vh 1vw 0 0;
+}

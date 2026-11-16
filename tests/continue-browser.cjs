@@ -14,6 +14,7 @@ const {chromium} = require('playwright-core'),
         historyRequests = 0,
         readRequests = 0,
         phonePosition = 999;
+    const requestedWindows = [];
     function history() {
         return [
             ...Array.from({length: 7}, (_, i) => ({
@@ -38,7 +39,7 @@ const {chromium} = require('playwright-core'),
                 node: {id: '202', title: 'Deleted', lengthSeconds: 7200, isDeleted: true}
             },
             {history: {position: 7190, updatedAt: new Date().toISOString()}, node: {id: '203', title: 'Almost complete', lengthSeconds: 7200}},
-            {history: {position: 100, updatedAt: new Date().toISOString()}, node: {id: '104', title: 'Duplicate', lengthSeconds: 7200}}
+            {history: {position: 100, updatedAt: '2025-01-01T00:00:00Z'}, node: {id: '104', title: 'Duplicate', lengthSeconds: 7200}}
         ];
     }
     page.on('pageerror', e => {
@@ -60,10 +61,54 @@ const {chromium} = require('playwright-core'),
         } catch {}
         if (body && body.operationName === 'ClassicContinueWatching') {
             historyRequests++;
+            requestedWindows.push(body.variables.first);
+            assert.ok(body.query.includes('excludeHiddenChannels:$excludeHidden'));
+            let edges = account === '123' ? history() : [];
+            if (mode === 'cap' && body.variables.first === 1000)
+                return r.fulfill({contentType: 'application/json', body: JSON.stringify({errors: [{message: 'Limit exceeds maximum'}]})});
+            if (mode === 'cap' && body.variables.first === 20) edges = [];
+            if (mode === 'official-empty' && body.variables.first === 20) edges = [];
+            if (mode === 'broad')
+                edges =
+                    body.variables.first === 20
+                        ? []
+                        : [
+                              ...history(),
+                              {
+                                  history: {position: 500, updatedAt: '2026-11-16T10:00:00Z'},
+                                  node: {id: '901', title: 'Live archive pending duration', lengthSeconds: null}
+                              },
+                              {
+                                  history: {position: 601, updatedAt: '2026-11-16T09:00:00Z'},
+                                  node: {id: '902', title: 'Broadcast still recording', lengthSeconds: 600, status: 'RECORDING'}
+                              },
+                              {
+                                  node: {
+                                      id: '903',
+                                      title: 'Self history fallback',
+                                      lengthSeconds: 1000,
+                                      self: {viewingHistory: {position: 400, updatedAt: '2026-11-16T08:00:00Z'}}
+                                  }
+                              }
+                          ];
+            if (mode === 'partial')
+                return r.fulfill({
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        data: {currentUser: {id: account, viewedVideos: {edges}}},
+                        errors: [{message: 'Optional field unavailable'}]
+                    })
+                });
+            if (mode === 'wrong')
+                return r.fulfill({
+                    contentType: 'application/json',
+                    body: JSON.stringify({data: {currentUser: {id: 'intruder', viewedVideos: {edges: history()}}}})
+                });
+            if (mode === 'empty') edges = [];
             if (mode === 'error') return r.fulfill({status: 503, body: 'Unavailable'});
             return r.fulfill({
                 contentType: 'application/json',
-                body: JSON.stringify({data: {currentUser: {id: account, viewedVideos: {edges: account === '123' ? history() : []}}}})
+                body: JSON.stringify({data: {currentUser: {id: account, viewedVideos: {edges}}}})
             });
         }
         if (body && body.operationName === 'ClassicVodSyncRead') {
@@ -147,7 +192,14 @@ const {chromium} = require('playwright-core'),
             Settings_AppLang = 'ru_RU';
             Main_SetStringsMain();
             AddUser_UsernameArray = [{id: '123', name: 'viewer', access_token: 'fixture-private-token'}];
-            Main_values_History_data['123'] = {live: [], vod: [], clip: [], test: [], deleted: {live: {}, vod: {}, clip: {}}};
+            Main_values_History_data['123'] = {
+                live: [],
+                vod: [],
+                clip: [],
+                test: [],
+                blocked: {live: {}, vod: {}, clip: {}, game: {}},
+                deleted: {live: {}, vod: {}, clip: {}}
+            };
             FollowingClassic_init();
         });
         await page.waitForFunction(
@@ -173,7 +225,7 @@ const {chromium} = require('playwright-core'),
         await page.keyboard.press('ArrowRight');
         assert.equal(await page.evaluate(() => FollowingClassic.focusKey), 'continue:101');
         await page.keyboard.press('ArrowDown');
-        assert.ok((await page.evaluate(() => FollowingClassic.focusKey)).startsWith('live:'));
+        assert.equal(await page.evaluate(() => FollowingClassic.focusKey), 'continue:history');
         await page.keyboard.press('ArrowUp');
         assert.ok((await page.evaluate(() => FollowingClassic.focusKey)).startsWith('continue:'));
         // Long OK is context for continuation cards; the normal live-card refresh is unchanged.
@@ -192,6 +244,46 @@ const {chromium} = require('playwright-core'),
         });
         await page.waitForFunction(() => !ClassicContinue.loading);
         assert.ok(!(await page.evaluate(() => ClassicContinue.items.map(i => i.id))).includes(hiddenId), 'hiding survives refresh');
+        assert.deepEqual(requestedWindows.slice(0, 2), [20, 1000]);
+        assert.equal(
+            await page.evaluate(() => Main_values_History_data['123'].vod.some(r => r.id === '200' && r.watched === 7200)),
+            true,
+            'completed videos imported to full history'
+        );
+        assert.equal(await page.evaluate(() => Main_values_History_data['123'].vod.length), 10);
+        // Official window empty, but the expanded account request still populates the shelf.
+        mode = 'official-empty';
+        await page.evaluate(() => ClassicContinue_load(true));
+        await page.waitForFunction(() => !ClassicContinue.loading);
+        assert.equal(await page.locator('.classic-continue-card').count(), 5);
+        assert.equal(await page.evaluate(() => ClassicContinue.error), false);
+        mode = 'cap';
+        await page.evaluate(() => ClassicContinue_load(true));
+        await page.waitForFunction(() => !ClassicContinue.loading);
+        assert.equal(await page.evaluate(() => ClassicContinue.error), false, 'rejected large window falls back to 100');
+        assert.equal(await page.locator('.classic-continue-card').count(), 5);
+        assert.ok(requestedWindows.includes(100));
+        mode = 'broad';
+        await page.evaluate(() => ClassicContinue_load(true));
+        await page.waitForFunction(() => !ClassicContinue.loading);
+        assert.ok((await page.evaluate(() => ClassicContinue.items.map(i => i.id))).includes('901'));
+        assert.ok((await page.evaluate(() => ClassicContinue.items.map(i => i.id))).includes('902'));
+        assert.ok((await page.evaluate(() => ClassicContinue.items.map(i => i.id))).includes('903'));
+        assert.ok((await page.locator('.classic-continue-card').first().innerText()).includes('Просмотрено'));
+        assert.equal(await page.locator('.classic-continue-progress span[style*="NaN"]').count(), 0);
+        assert.equal(await page.evaluate(() => Main_values_History_data['123'].vod.find(r => r.id === '903').watched), 400);
+        // The history action opens the existing complete VOD grid, with both completed and unfinished rows.
+        await page.evaluate(() => ClassicContinue_history());
+        await page.waitForFunction(() => Main_values.Main_Go === Main_HistoryVod && ScreenObj[Main_HistoryVod].status);
+        assert.ok((await page.locator('#stream_table_historyvod').innerText()).includes('Completed'));
+        assert.ok((await page.locator('#stream_table_historyvod').innerText()).includes('Live archive pending duration'));
+        await page.evaluate(() => ClassicShell_goScreen(Main_UserLive));
+        await page.waitForFunction(() => FollowingClassic.active && !ClassicContinue.loading);
+        mode = 'partial';
+        await page.evaluate(() => ClassicContinue_load(true));
+        await page.waitForFunction(() => !ClassicContinue.loading);
+        assert.equal(await page.evaluate(() => ClassicContinue.error), false, 'valid history survives unrelated GraphQL errors');
+        mode = 'ok';
         // Capture the real opener after it maps server metadata to the existing VOD fields.
         await page.evaluate(() => {
             window.openedContinue = null;
@@ -233,7 +325,18 @@ const {chromium} = require('playwright-core'),
             FollowingClassic_reload();
         });
         await page.waitForFunction(() => ClassicContinue.account === '999' && !ClassicContinue.loading);
-        assert.equal(await page.locator('.classic-continue-section').count(), 0);
+        assert.equal(await page.locator('.classic-continue-section').count(), 1, 'empty account never silently hides the shelf');
+        assert.ok((await page.locator('.classic-continue-section').innerText()).includes('Twitch не вернул'));
+        assert.equal(await page.locator('.classic-continue-card').count(), 0);
+        assert.equal(
+            await page.evaluate(() => JSON.parse(localStorage.getItem('classic_continue_status_999')).text.includes('незаконченных 0')),
+            true
+        );
+        mode = 'wrong';
+        await page.evaluate(() => ClassicContinue_load(true));
+        await page.waitForFunction(() => !ClassicContinue.loading);
+        assert.equal(await page.evaluate(() => ClassicContinue.error), true);
+        assert.equal(await page.locator('.classic-continue-card').count(), 0, 'wrong account responses never leak history');
         // Late automatic-preview replies are also ignored after disabling the VOD option.
         await page.evaluate(() => {
             Settings_value.show_vod_player.defaultValue = 0;
@@ -293,7 +396,7 @@ const {chromium} = require('playwright-core'),
         assert.ok(historyRequests >= 4);
         assert.deepEqual(errors, []);
         console.log(
-            'PASS: account-only five-card continuation, unfinished/deleted filtering, phone-to-TV fresh read on open, remote navigation/context hide, cached/error/account isolation, VOD preview opt-in and preserved pause, independent live autoplay'
+            'PASS: official/expanded/fallback account history, completed-history import, unknown-duration and recording archives, self-history and partial data, visible empty state, five-card continuation, fresh resume, remote/context navigation, cache/account isolation, paused VOD and live autoplay'
         );
     } finally {
         await browser.close();

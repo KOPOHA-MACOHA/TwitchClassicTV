@@ -14,7 +14,7 @@ var ClassicVodSync = {
     status: {read: 'idle', write: 'idle', position: null, saved: 0}
 };
 var ClassicVodSync_readQuery =
-    'query ClassicVodSyncRead($id:ID!){video(id:$id){id self{viewingHistory{position updatedAt}}} currentUser{id viewedVideos(first:50){edges{history{position updatedAt}node{id}}}}}';
+    'query ClassicVodSyncRead($id:ID!){video(id:$id){id self{viewingHistory{position updatedAt}}} currentUser{id viewedVideos(first:100,excludeHiddenChannels:false){edges{history{position updatedAt}node{id}}}}}';
 var ClassicVodSync_writeQuery =
     'mutation ClassicVodSyncWrite($input:UpdateUserViewedVideoInput!){updateUserViewedVideo(input:$input){video{id self{viewingHistory{position updatedAt}}}}}';
 function ClassicVodSync_user() {

@@ -1,4 +1,4 @@
-# Twitch Classic 0.20
+# Twitch Classic 0.21
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -140,3 +140,9 @@ Fresh server resume history now wins over unconfirmed local checkpoints and TV c
 VOD thumbnail autoplay is disabled once on upgrading, and defaults off on new installations; it can be enabled under Appearance > Previews. Live autoplay retains its own preference. A paused VOD reused as a thumbnail is not automatically unpaused, even after opting in. Screen and in-player-feed auto-preview replies honour the VOD switch, including late responses.
 
 Both GraphQL query shapes were accepted by the current Twitch endpoint without an account (currentUser=null), which establishes schema validity only. Tests simulate authenticated replies; real account shelf access and phone-to-TV progress still need user verification. TV-to-Twitch saving was confirmed by the user on 0.19.
+
+## 0.21 account history retrieval and empty state
+
+Use the official TV Following root (`user`, aliased to currentUser) with first=20 and excludeHiddenChannels=true, followed by the account root with first=1000 and excludeHiddenChannels=false. Fall back to first=100 if the expanded request fails. Merge and deduplicate records by video ID/newest history timestamp. Import completed and unfinished records into account-local VOD history without removing TV-only entries; respect the VOD-history recording preference. Continue shows five unfinished records, including unknown duration and RECORDING archives. The existing VOD grid is available from a dedicated history action. An empty result has an explicit state/retry and per-account persisted counts, instead of silently hiding the shelf. Missing primary history can use video.self.viewingHistory.
+
+The internal connection has no after/cursor/pageInfo, verified against the current endpoint. No lifetime-history completeness or authenticated mobile parity is claimed. These are existing server bookmarks; this change does not start writing LIVE watch positions or implement streak accounting. Native DEX and signing identity are unchanged.
