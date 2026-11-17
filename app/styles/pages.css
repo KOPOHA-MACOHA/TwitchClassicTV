@@ -132,6 +132,17 @@
     color: #adadb8;
     padding: 2vh 0;
 }
+.following-status[data-focus-key] {
+    width: fit-content;
+    min-width: 14vw;
+    padding: 2vh 1vw;
+}
+.following-status.is-focused {
+    color: #efeff1;
+    outline: 2px solid #9146ff;
+    outline-offset: -2px;
+    border-radius: 0.6vh;
+}
 .following-retry {
     background: #303036;
     color: #efeff1;

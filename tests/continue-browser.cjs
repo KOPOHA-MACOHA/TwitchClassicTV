@@ -14,6 +14,8 @@ const {chromium} = require('playwright-core'),
         historyRequests = 0,
         readRequests = 0,
         phonePosition = 999;
+    let liveBarrier = Promise.resolve(), releaseLive;
+    function delayLive() { liveBarrier = new Promise(resolve => { releaseLive = resolve; }); }
     const requestedWindows = [];
     function history() {
         return [
@@ -152,7 +154,8 @@ const {chromium} = require('playwright-core'),
                     }
                 })
             });
-        if (url.includes('streams/followed'))
+        if (url.includes('streams/followed')) {
+            await liveBarrier;
             return r.fulfill({
                 contentType: 'application/json',
                 body: JSON.stringify({
@@ -174,6 +177,7 @@ const {chromium} = require('playwright-core'),
                     pagination: {}
                 })
             });
+        }
         return r.fulfill({
             contentType: 'application/json',
             body: JSON.stringify({data: [], pagination: {}, access_token: 'fixture', expires_in: 3600})
@@ -183,7 +187,18 @@ const {chromium} = require('playwright-core'),
         await page.goto('http://127.0.0.1:8765/app/index.html?asset-test=1');
         await page.waitForFunction(() => typeof ClassicContinue === 'object' && ClassicShell_navItems.length === 6);
         await page.keyboard.press('Escape');
-        await page.evaluate(() => {
+        delayLive();
+        await page.evaluate(edges => {
+            window.raceOpens = [];
+            window.raceFocus = [];
+            window.originalRaceVod = Main_OpenVodStart;
+            window.originalRaceLive = Main_OpenLiveStream;
+            Main_OpenVodStart = (data, cell) => raceOpens.push(cell);
+            Main_OpenLiveStream = () => raceOpens.push('live');
+            document.addEventListener('focusin', event => {
+                if (event.target.dataset.focusKey) raceFocus.push(event.target.dataset.focusKey);
+            });
+            localStorage.setItem('classic_continue_cache_123', JSON.stringify({edges}));
             Main_HideWelcomeDialog();
             Main_HideWarningDialog();
             Main_HideAboutDialog();
@@ -201,10 +216,49 @@ const {chromium} = require('playwright-core'),
                 deleted: {live: {}, vod: {}, clip: {}}
             };
             FollowingClassic_init();
-        });
+        }, history());
         await page.waitForFunction(
-            () => ClassicContinue.items.length === 7 && !ClassicContinue.loading && FollowingClassic.liveDone && FollowingClassic.channelsDone
+            () => ClassicContinue.items.length === 7 && !ClassicContinue.loading && FollowingClassic.channelsDone && !FollowingClassic.liveDone
         );
+        assert.equal(await page.evaluate(() => FollowingClassic.focusKey), 'live:loading');
+        assert.equal(await page.evaluate(() => document.activeElement.dataset.focusKey), 'live:loading');
+        assert.equal(await page.evaluate(() => raceFocus.some(key => key.startsWith('continue:'))), false,
+            'cached and fresh history must not take initial focus while live streams are pending');
+        await page.keyboard.down('Enter');
+        releaseLive();
+        await page.waitForFunction(() => FollowingClassic.liveDone);
+        await page.evaluate(() => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter', keyCode: KEY_ENTER, bubbles: true, repeat: true
+        })));
+        await page.keyboard.up('Enter');
+        assert.equal(await page.evaluate(() => FollowingClassic.focusKey), 'live:400');
+        assert.deepEqual(await page.evaluate(() => raceOpens), [], 'OK on loading must not activate a newly arrived card');
+        // An intentional selection below the loading row wins over the late live response.
+        delayLive();
+        await page.evaluate(() => {
+            FollowingClassic.focusKey = null;
+            FollowingClassic_reload();
+        });
+        await page.waitForFunction(() => !ClassicContinue.loading && FollowingClassic.channelsDone && !FollowingClassic.liveDone);
+        await page.keyboard.press('ArrowDown');
+        assert.equal(await page.evaluate(() => FollowingClassic.focusKey), 'continue:100');
+        await page.keyboard.down('Enter');
+        releaseLive();
+        await page.waitForFunction(() => FollowingClassic.liveDone);
+        await page.keyboard.up('Enter');
+        assert.equal(await page.evaluate(() => FollowingClassic.focusKey), 'continue:100');
+        assert.deepEqual(await page.evaluate(() => raceOpens), ['continue_100'], 'OK retains its target through a render');
+        await page.keyboard.down('Enter');
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.up('Enter');
+        assert.deepEqual(await page.evaluate(() => raceOpens), ['continue_100'], 'moving selection cancels the held OK target');
+        await page.evaluate(() => {
+            Main_OpenVodStart = originalRaceVod;
+            Main_OpenLiveStream = originalRaceLive;
+            ClassicVodSync.nextContinue = null;
+            FollowingClassic.cursor = FollowingClassic.rows.findIndex(row => row.section === 'live');
+            FollowingClassic_focus(true);
+        });
         assert.equal(await page.locator('.classic-continue-card').count(), 5);
         assert.deepEqual(await page.locator('#classic_following_page h2').allTextContents(), ['В эфире', 'Продолжить просмотр', 'Не в эфире']);
         assert.equal(await page.locator('.classic-continue-card').first().locator('.following-stream-channel').innerText(), 'Не из подписок');

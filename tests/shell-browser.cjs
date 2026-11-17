@@ -535,9 +535,11 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
             FollowingClassic_focus(true);
         });
         const playCount = await page.evaluate(() => window.openCalls || 0);
+        const lastRefresh = await page.evaluate(() => FollowingClassic.updated);
         await page.keyboard.down('Enter');
         await page.waitForFunction(
-            () => FollowingClassic.holdLong && FollowingClassic.liveDone && FollowingClassic.channelsDone && !ClassicContinue.loading
+            since => FollowingClassic.updated > since && FollowingClassic.liveDone && FollowingClassic.channelsDone && !ClassicContinue.loading,
+            lastRefresh
         );
         await page.keyboard.up('Enter');
         assert.equal(livePages, 4);

@@ -132,7 +132,9 @@ function FollowingClassic_reload() {
         return;
     }
     FollowingClassic_stopPreview();
-    FollowingClassic.pendingFocus = FollowingClassic.focusKey;
+    FollowingClassic_cancelHold();
+    if (FollowingClassic.account !== AddUser_UsernameArray[0].id) FollowingClassic.focusKey = null;
+    FollowingClassic.pendingFocus = FollowingClassic.focusKey === 'live:loading' ? null : FollowingClassic.focusKey;
     ClassicPages_cancel(FollowingClassic);
     FollowingClassic.account = AddUser_UsernameArray[0].id;
     FollowingClassic.updated = Date.now();
@@ -283,7 +285,8 @@ function FollowingClassic_render() {
         FollowingClassic.liveDone,
         FollowingClassic.liveError,
         FollowingClassic.live.length,
-        ru ? 'Сейчас никто не в эфире' : 'No followed channels are live'
+        ru ? 'Сейчас никто не в эфире' : 'No followed channels are live',
+        'live:loading'
     );
     panel.appendChild(live);
     ClassicContinue_render(panel);
@@ -327,11 +330,21 @@ function FollowingClassic_render() {
     if (restored >= 0 || (FollowingClassic.liveDone && FollowingClassic.channelsDone && !ClassicContinue.loading))
         FollowingClassic.pendingFocus = null;
     FollowingClassic.cursor = Math.max(0, restored);
+    var selected = FollowingClassic.rows[FollowingClassic.cursor];
+    if (FollowingClassic.holdDown && (!selected || selected.key !== FollowingClassic.holdKey)) FollowingClassic_cancelHold();
     if (!ClassicShell_navActive && Main_isScene1DocVisible() && !ClassicPreview_blocked()) FollowingClassic_focus(false);
 }
-function FollowingClassic_status(section, done, error, count, empty) {
-    if (!done) section.appendChild(ClassicPages_el('p', 'following-status', ClassicShell_ru() ? 'Загрузка…' : 'Loading…'));
-    else if (error) {
+function FollowingClassic_status(section, done, error, count, empty, loadingKey) {
+    if (!done) {
+        var loading = ClassicPages_el('p', 'following-status', ClassicShell_ru() ? 'Загрузка…' : 'Loading…');
+        if (loadingKey) {
+            loading.tabIndex = -1;
+            loading.dataset.focusKey = loadingKey;
+            loading.setAttribute('aria-busy', 'true');
+            FollowingClassic.rows.push({key: loadingKey, node: loading, section: 'loading'});
+        }
+        section.appendChild(loading);
+    } else if (error) {
         var retry = ClassicPages_el('button', 'following-retry', ClassicShell_ru() ? 'Не удалось загрузить. Повторить' : 'Could not load. Retry');
         retry.type = 'button';
         retry.onclick = FollowingClassic_reload;
@@ -357,6 +370,8 @@ function FollowingClassic_key(event) {
     event.preventDefault();
     var key = event.keyCode,
         row = FollowingClassic.rows[FollowingClassic.cursor];
+    if (key === KEY_ENTER && (!row || row.section === 'loading' || (event.repeat && !FollowingClassic.holdDown))) return;
+    if (key !== KEY_ENTER) FollowingClassic_cancelHold();
     if ([KEY_ENTER, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN].indexOf(key) !== -1) {
         FollowingClassic.pendingFocus = null;
         if (row) FollowingClassic.focusKey = row.key;
