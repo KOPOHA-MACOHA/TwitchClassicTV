@@ -18,12 +18,12 @@ function ClassicPages_image(url, className, fallback) {
     };
     return image;
 }
-function ClassicPages_request(owner, url, headers, method, body, success, failure) {
+function ClassicPages_request(owner, url, headers, method, body, success, failure, timeoutMs) {
     var id = ++ClassicPages_requestId;
     ClassicPages_requests[id] = {owner: owner, generation: owner.generation, success: success, failure: failure};
     ClassicPages_requests[id].timer = window.setTimeout(function () {
         ClassicPages_failure(null, 0, id);
-    }, 15000);
+    }, timeoutMs || 15000);
     try {
         FullxmlHttpGet(url, headers, ClassicPages_result, ClassicPages_failure, 0, id, method, body);
     } catch (error) {
@@ -327,7 +327,7 @@ function FollowingClassic_render() {
     if (restored >= 0 || (FollowingClassic.liveDone && FollowingClassic.channelsDone && !ClassicContinue.loading))
         FollowingClassic.pendingFocus = null;
     FollowingClassic.cursor = Math.max(0, restored);
-    if (!ClassicShell_navActive && Main_isScene1DocVisible()) FollowingClassic_focus(false);
+    if (!ClassicShell_navActive && Main_isScene1DocVisible() && !ClassicPreview_blocked()) FollowingClassic_focus(false);
 }
 function FollowingClassic_status(section, done, error, count, empty) {
     if (!done) section.appendChild(ClassicPages_el('p', 'following-status', ClassicShell_ru() ? 'Загрузка…' : 'Loading…'));
@@ -731,7 +731,7 @@ function FollowingClassic_stopPreview() {
     });
 }
 function FollowingClassic_preview(row) {
-    if (!Main_isScene1DocVisible() || Main_isStopped || ClassicShell_navActive) return;
+    if (ClassicPreview_blocked()) return;
     if (!row || row.section !== 'live') {
         FollowingClassic_stopPreview();
         ScreenObj[Main_UserLive].posY = -2;
@@ -770,7 +770,7 @@ function FollowingClassic_previewResult(result, key, requestId) {
     if (
         !FollowingClassic.active ||
         !Main_isScene1DocVisible() ||
-        ClassicShell_navActive ||
+        ClassicPreview_blocked() ||
         requestId !== FollowingClassic.previewRequest ||
         FollowingClassic.previewKey !== FollowingClassic.focusKey ||
         FollowingClassic.previewGeneration !== FollowingClassic.generation

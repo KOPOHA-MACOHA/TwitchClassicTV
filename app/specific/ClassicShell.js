@@ -170,6 +170,7 @@ function ClassicShell_syncNav() {
     });
 }
 function ClassicShell_focusNav() {
+    ClassicPreview_stop();
     if (ClassicShell_navActive) return;
     var screen = ScreenObj[Main_values.Main_Go];
     if (FollowingClassic.active && Main_values.Main_Go === Main_UserLive) {
@@ -257,6 +258,7 @@ function ClassicShell_blurNav(resume) {
 }
 
 function ClassicShell_activateNav() {
+    ClassicPreview_stop();
     var context = ClassicShell_navReturn;
     if (
         context &&
@@ -355,7 +357,7 @@ function ClassicShell_rootSettings() {
                     ['backup_sync'],
                     [
                         ClassicShell_row(
-                            ClassicShell_ru() ? 'Синхронизация записей Twitch' : 'Twitch VOD synchronisation',
+                            ClassicShell_ru() ? 'Синхронизация просмотра Twitch' : 'Twitch watch synchronisation',
                             ClassicShell_ru() ? 'Продолжение просмотра между ТВ и приложением Twitch' : 'Resume watching between TV and Twitch',
                             ClassicVodSync_menu,
                             'history'
@@ -836,6 +838,7 @@ function ClassicShell_presentSetting(key, info) {
 }
 
 function ClassicShell_goScreen(key) {
+    ClassicPreview_stop();
     var before = Main_values.Main_Go;
     // The legacy sidebar re-adds its old callback when selecting the current page.
     // Header navigation must close and reopen the actual page instead.

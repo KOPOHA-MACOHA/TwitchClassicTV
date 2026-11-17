@@ -271,10 +271,34 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         assert.equal(await page.evaluate(() => opened), 1);
 
         // Back from a root grid reaches the header, then opens the real exit dialog.
+        await page.waitForFunction(() => !Main_CantClick());
         await page.keyboard.press('Escape');
-        assert.equal(await page.evaluate(() => ClassicShell_navActive), true);
+        assert.equal(
+            await page.evaluate(() => ClassicShell_navActive),
+            true,
+            JSON.stringify({
+                errors,
+                state: await page.evaluate(() => ({
+                    go: Main_values.Main_Go,
+                    pos: ScreenObj[Main_values.Main_Go].posY,
+                    focus: document.activeElement?.id,
+                    dialogs: [...document.querySelectorAll('[role=dialog],[id*=dialog]')].filter(n => n.getClientRects().length).map(n => n.id)
+                }))
+            })
+        );
         await page.keyboard.press('Escape');
-        assert.equal(await page.locator('#main_dialog_exit').isVisible(), true);
+        assert.equal(
+            await page.locator('#main_dialog_exit').isVisible(),
+            true,
+            JSON.stringify({
+                errors,
+                state: await page.evaluate(() => ({
+                    nav: ClassicShell_navActive,
+                    go: Main_values.Main_Go,
+                    exit: document.getElementById('main_dialog_exit').className
+                }))
+            })
+        );
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('#main_dialog_exit').isVisible(), false);
 

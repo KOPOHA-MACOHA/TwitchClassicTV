@@ -18,7 +18,10 @@ function ClassicFeatures_enabled(key) {
 function ClassicFeatures_set(key, value) {
     Main_setItem('classic_feature_' + key, value ? 'true' : 'false');
     if (key === 'vod_sync') {
-        if (!value) ClassicVodSync_stop(false);
+        if (!value) {
+            ClassicVodSync_stop(false);
+            ClassicLiveSync_stop(false);
+        } else if (Play_isOn && !PlayVod_isOn && !PlayClip_isOn) ClassicLiveSync_start();
         var account = ClassicVodSync_user();
         if (account && ClassicVodSync.status.user !== account.id) ClassicVodSync.status = ClassicVodSync_lastStatus();
         if (account) ClassicVodSync.status.user = account.id;

@@ -20,6 +20,26 @@ var ClassicContinue_query =
     ClassicContinue_fields +
     '}}}}}';
 var ClassicContinue_fullQuery = ClassicContinue_query.replace('currentUser:user{', 'currentUser{');
+var ClassicContinue_candidatesQuery =
+    'query ClassicContinueCandidates($first:Int!,$after:Cursor){currentUser{id followedVideos(first:$first,after:$after,types:[ARCHIVE,UPLOAD,HIGHLIGHT,PAST_PREMIERE]){pageInfo{hasNextPage endCursor}edges{node{' +
+    ClassicContinue_fields +
+    '}}}}}';
+function ClassicContinue_knownIds(account) {
+    var history = Main_values_History_data[account],
+        ids = [];
+    if (!history) return ids;
+    (history.vod || []).forEach(function (row) {
+        if (row && /^\d+$/.test(String(row.id))) ids.push(String(row.id));
+    });
+    (history.live || []).forEach(function (row) {
+        if (row && /^\d+$/.test(String(row.vodid || ''))) ids.push(String(row.vodid));
+    });
+    return ids
+        .filter(function (id, index) {
+            return ids.indexOf(id) === index;
+        })
+        .slice(0, 100);
+}
 function ClassicContinue_invalidate() {
     ClassicContinue.updated = 0;
 }
@@ -31,7 +51,8 @@ function ClassicContinue_parse(user, account, includeCompleted) {
     } catch (error) {
         /* Empty hidden list. */
     }
-    var records = {};
+    var records = {},
+        order = [];
     user.viewedVideos.edges.slice(0, 2000).forEach(function (edge) {
         if (!edge || !edge.node) return;
         var video = edge.node,
@@ -61,6 +82,7 @@ function ClassicContinue_parse(user, account, includeCompleted) {
             previous = records[id];
         if (previous && previous.updatedAt >= updated) return;
         var owner = video.owner || video.creator || {};
+        if (!previous) order.push(id);
         records[id] = {
             id: id,
             title: String(video.title || ''),
@@ -80,7 +102,7 @@ function ClassicContinue_parse(user, account, includeCompleted) {
             }
         };
     });
-    return Object.keys(records)
+    return order
         .map(function (id) {
             return records[id];
         })
@@ -155,10 +177,19 @@ function ClassicContinue_load(force) {
     ClassicContinue.error = false;
     ClassicContinue.cached = false;
     ClassicContinue.status = '';
+    ClassicContinue.recovered = false;
+    ClassicContinue.partial = false;
     var request = ++ClassicContinue.request,
         edges = [],
         successes = 0,
-        received = [];
+        received = [],
+        cataloguePages = 0,
+        scanned = 0,
+        seenCandidates = {},
+        fallbackStarted = false,
+        fallbackGood = false,
+        deadline = Date.now() + 18000,
+        storedEdges = [];
     ClassicContinue.items = [];
     ClassicContinue.all = [];
     function apply(user) {
@@ -167,24 +198,151 @@ function ClassicContinue_load(force) {
     }
     try {
         var stored = JSON.parse(localStorage.getItem('classic_continue_cache_' + account));
-        if (stored && Array.isArray(stored.edges)) apply({id: account, viewedVideos: stored});
+        if (stored && Array.isArray(stored.edges)) {
+            storedEdges = stored.edges;
+            apply({id: account, viewedVideos: stored});
+        }
     } catch (error) {
         /* No offline cache. */
     }
     function current() {
         return request === ClassicContinue.request && AddUser_UserHasToken() && String(AddUser_UsernameArray[0].id) === account;
     }
-    function finish() {
+    function candidateRequest(body, success, failure) {
         if (!current()) return;
+        HttpGetSetUserHeader();
+        ClassicPages_request(
+            FollowingClassic,
+            PlayClip_BaseUrl,
+            Main_OAuth_User_Headers.concat([
+                ['Content-Type', 'application/json'],
+                ['Cache-Control', 'no-cache']
+            ]),
+            'POST',
+            JSON.stringify(body),
+            success,
+            failure,
+            Math.max(1, Math.min(6000, deadline - Date.now()))
+        );
+    }
+    function collect(nodes) {
+        nodes.forEach(function (node) {
+            if (!node || !/^\d+$/.test(String(node.id))) return;
+            seenCandidates[String(node.id)] = true;
+            scanned++;
+            var h = node.self && node.self.viewingHistory;
+            if (h && typeof h.position === 'number' && h.position > 0) edges.push({node: node, history: h});
+        });
+        apply({id: account, viewedVideos: {edges: edges}});
+        FollowingClassic_render();
+    }
+    function knownBatch(ids) {
+        if (!current()) return;
+        if (!ids.length || Date.now() >= deadline) {
+            finish(true);
+            return;
+        }
+        var batch = ids.slice(0, 20),
+            rest = ids.slice(20),
+            query = 'query ClassicContinueKnown { currentUser{id} ';
+        batch.forEach(function (id, index) {
+            query += 'v' + index + ':video(id:' + JSON.stringify(id) + '){' + ClassicContinue_fields + '} ';
+        });
+        candidateRequest(
+            {operationName: 'ClassicContinueKnown', query: query + '}'},
+            function (result) {
+                if (!current()) return;
+                if (!result.data || !result.data.currentUser || String(result.data.currentUser.id) !== account) {
+                    ClassicContinue.partial = true;
+                    finish(true);
+                    return;
+                }
+                if (result.errors && result.errors.length) ClassicContinue.partial = true;
+                collect(
+                    batch.map(function (id, index) {
+                        return result.data['v' + index];
+                    })
+                );
+                fallbackGood = true;
+                knownBatch(rest);
+            },
+            function () {
+                if (current()) {
+                    ClassicContinue.partial = true;
+                    finish(true);
+                }
+            }
+        );
+    }
+    function known() {
+        knownBatch(
+            ClassicContinue_knownIds(account).filter(function (id) {
+                return !seenCandidates[id];
+            })
+        );
+    }
+    function catalogue(after) {
+        if (!current()) return;
+        if (cataloguePages >= 3 || Date.now() >= deadline) {
+            ClassicContinue.partial = true;
+            known();
+            return;
+        }
+        cataloguePages++;
+        candidateRequest(
+            {operationName: 'ClassicContinueCandidates', query: ClassicContinue_candidatesQuery, variables: {first: 100, after: after}},
+            function (result) {
+                if (!current()) return;
+                var user = result.data && result.data.currentUser,
+                    connection = user && user.followedVideos;
+                if (!user || String(user.id) !== account || !connection || !Array.isArray(connection.edges)) {
+                    ClassicContinue.partial = true;
+                    known();
+                    return;
+                }
+                fallbackGood = true;
+                if (result.errors && result.errors.length) ClassicContinue.partial = true;
+                collect(
+                    connection.edges.map(function (edge) {
+                        return edge && edge.node;
+                    })
+                );
+                var page = connection.pageInfo;
+                if (page && page.hasNextPage && page.endCursor && page.endCursor !== after) catalogue(page.endCursor);
+                else {
+                    if (page && page.hasNextPage) ClassicContinue.partial = true;
+                    known();
+                }
+            },
+            function () {
+                if (current()) {
+                    ClassicContinue.partial = true;
+                    known();
+                }
+            }
+        );
+    }
+    function finish(fromFallback) {
+        if (!current()) return;
+        if (!fromFallback && !fallbackStarted && !ClassicContinue_parse({id: account, viewedVideos: {edges: edges}}, account, true).length) {
+            fallbackStarted = true;
+            deadline = Date.now() + 18000;
+            catalogue(null);
+            return;
+        }
+        var useCache = fallbackStarted && ClassicContinue.partial && !edges.length && storedEdges.length > 0;
+        if (useCache) edges = storedEdges;
+        ClassicContinue.recovered = fallbackStarted && edges.length > 0;
         ClassicContinue.loading = false;
-        ClassicContinue.error = !successes;
-        ClassicContinue.cached = !successes && ClassicContinue.items.length > 0;
-        if (successes) {
+        ClassicContinue.error = !successes && !fallbackGood;
+        ClassicContinue.cached = !!useCache || (!successes && !fallbackGood && ClassicContinue.items.length > 0);
+        if (successes || fallbackGood) {
             var user = {id: account, viewedVideos: {edges: edges}};
             apply(user);
             ClassicContinue_import(account);
             Main_setItem('classic_continue_cache_' + account, JSON.stringify(user.viewedVideos));
         }
+        if (fallbackStarted) received.push((ClassicShell_ru() ? 'проверено видео ' : 'videos checked ') + scanned);
         ClassicContinue.status =
             (ClassicShell_ru() ? 'Twitch: получено ' : 'Twitch: received ') +
             received.join(' / ') +
@@ -225,7 +383,7 @@ function ClassicContinue_load(force) {
                     apply({id: account, viewedVideos: {edges: edges}});
                     FollowingClassic_render();
                     fetchHistory(true);
-                } else finish();
+                } else finish(false);
             },
             function () {
                 if (!current()) return;
@@ -285,6 +443,20 @@ function ClassicContinue_render(panel) {
         FollowingClassic.rows.push({key: key, node: button, section: 'continue', item: item});
     });
     section.appendChild(grid);
+    if (ClassicContinue.recovered)
+        section.appendChild(
+            ClassicPages_el(
+                'p',
+                'following-status',
+                ru
+                    ? 'По сохранённым позициям Twitch. Записи неизвестных ТВ каналов могут отсутствовать.'
+                    : 'Recovered from Twitch resume positions. Unknown channels may be missing.'
+            )
+        );
+    if (ClassicContinue.partial && !ClassicContinue.loading)
+        section.appendChild(
+            ClassicPages_el('p', 'following-status', ru ? 'Проверена часть доступных записей.' : 'Some available videos were checked.')
+        );
     if (ClassicContinue.loading) section.appendChild(ClassicPages_el('p', 'following-status', ru ? 'Обновление…' : 'Updating…'));
     else if (ClassicContinue.cached)
         section.appendChild(
@@ -311,7 +483,7 @@ function ClassicContinue_render(panel) {
         section.appendChild(history);
         FollowingClassic.rows.push({key: 'continue:history', node: history, section: 'history'});
     }
-    if (!ClassicContinue.loading && (ClassicContinue.error || !ClassicContinue.items.length)) {
+    if (!ClassicContinue.loading && (ClassicContinue.error || ClassicContinue.partial || !ClassicContinue.items.length)) {
         var retry = ClassicPages_el('button', 'following-retry', ru ? 'Обновить историю Twitch' : 'Retry Twitch history');
         retry.type = 'button';
         retry.onclick = function () {
@@ -367,6 +539,7 @@ function ClassicContinue_closeMenu() {
     if (FollowingClassic.active && Main_isScene1DocVisible()) FollowingClassic_focus(false);
 }
 function ClassicContinue_context(item) {
+    ClassicPreview_stop();
     ClassicContinue_closeMenu();
     var ru = ClassicShell_ru(),
         menu = ClassicPages_el('div', 'classic-continue-menu');

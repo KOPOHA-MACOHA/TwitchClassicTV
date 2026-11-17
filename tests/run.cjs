@@ -24,6 +24,8 @@ const root = require('path').resolve(__dirname, '..');
             'startup',
             'vod-sync',
             'continue',
+            'account-sync',
+            'preview-lifecycle',
             'features',
             'emote-layout',
             'giant-emotes',

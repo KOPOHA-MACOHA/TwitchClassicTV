@@ -28,6 +28,7 @@ function ClassicPlayback_begin() {
     ClassicPlayback.timer = window.setInterval(ClassicPlayback_poll, 1000);
 }
 function ClassicPlayback_stop() {
+    ClassicLiveSync_stop(true);
     window.clearInterval(ClassicPlayback.timer);
     ClassicPlayback.timer = null;
     ClassicPlayback.active = false;
@@ -61,6 +62,7 @@ function ClassicPlayback_poll() {
             if (generation !== ClassicPlayback.generation || !Play_isOn || Main_isStopped) return;
             ClassicPlayback.services = true;
             ClassicPlayback_optional('points', PlayChannelPoints_Start);
+            ClassicPlayback_optional('live-bookmarks', ClassicLiveSync_start);
             ClassicPlayback_optional('raids', function () {
                 PlayRaid_SetChannel(Play_data.data[14]);
             });

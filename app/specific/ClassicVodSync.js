@@ -559,6 +559,7 @@ function ClassicVodSync_menu() {
     var words = ru
         ? {
               idle: 'Ещё не выполнялось',
+              live: 'Отметка прямого эфира',
               off: 'Выключено настройкой',
               explicit: 'Задана начальная позиция',
               rewind: 'Перемотка прямого эфира',
@@ -581,6 +582,7 @@ function ClassicVodSync_menu() {
           }
         : {
               idle: 'Not attempted yet',
+              live: 'Live archive bookmark',
               off: 'Disabled in settings',
               explicit: 'Explicit start position',
               rewind: 'Live rewind',
@@ -613,7 +615,7 @@ function ClassicVodSync_menu() {
     if (status.source)
         summary +=
             ' · ' +
-            (status.source === 'cloud'
+            (status.source === 'cloud' || status.source === 'live_archive'
                 ? 'Twitch'
                 : status.source === 'local'
                   ? ru
@@ -623,12 +625,12 @@ function ClassicVodSync_menu() {
                     ? 'Явная позиция'
                     : 'Explicit position');
     if (status.saved) summary += ' · ' + new Date(status.saved).toLocaleTimeString();
-    ClassicShell_push(ru ? 'Синхронизация записей Twitch' : 'Twitch VOD synchronisation', summary, [
+    ClassicShell_push(ru ? 'Синхронизация просмотра Twitch' : 'Twitch watch synchronisation', summary, [
         ClassicShell_row(
-            ru ? 'Синхронизировать позицию VOD' : 'Synchronise VOD position',
+            ru ? 'Синхронизировать просмотр' : 'Synchronise viewing progress',
             ru
-                ? 'Получать позицию при открытии и сохранять во время просмотра. Изменение применяется при следующем открытии записи.'
-                : 'Read on open and save while watching. Changes apply when a video is reopened.',
+                ? 'Продолжение записей между устройствами и сохранение отметок прямых эфиров.'
+                : 'Resume videos across devices and save live archive bookmarks.',
             function () {
                 ClassicFeatures_set('vod_sync', !ClassicFeatures_enabled('vod_sync'));
                 // Replace this page without adding another Back navigation level.

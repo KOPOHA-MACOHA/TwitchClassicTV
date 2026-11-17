@@ -735,7 +735,7 @@ const {chromium} = require('playwright-core'),
         });
         await page.keyboard.press('Enter');
         await page.keyboard.press('Enter');
-        assert.match(await page.locator('#classic_preferences h1').innerText(), /Синхронизация записей/);
+        assert.match(await page.locator('#classic_preferences h1').innerText(), /Синхронизация просмотра/);
         await page.screenshot({path: 'tests/vod-sync-classic.png'});
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicFeatures_enabled('vod_sync')), false);

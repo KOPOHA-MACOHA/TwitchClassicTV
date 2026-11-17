@@ -1356,6 +1356,7 @@ function Play_shutdownStream() {
 }
 
 function Play_PreshutdownStream(closePlayer) {
+    ClassicLiveSync_flush();
     //Main_Log('Play_PreshutdownStream ' + closePlayer);
 
     if (Main_IsOn_OSInterface) {

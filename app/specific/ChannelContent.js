@@ -633,6 +633,7 @@ function ChannelContent_Refresh() {
 }
 
 function ChannelContent_LoadPreview() {
+    if (ClassicPreview_blocked()) return;
     if (
         !Main_isStopped &&
         !ChannelContent_isoffline &&
@@ -657,6 +658,7 @@ function ChannelContent_LoadPreview() {
 }
 
 function ChannelContent_LoadPreviewRestore() {
+    if (ClassicPreview_blocked()) return;
     var img = Main_getElementById(Main_ChannelContent + ChannelContent_Ids[0]);
     var Rect = img.parentElement.getBoundingClientRect();
 
@@ -686,16 +688,18 @@ function ChannelContent_LoadPreviewStart(obj) {
 }
 
 function ChannelContent_LoadPreviewRun(obj) {
+    if (ClassicPreview_blocked()) return;
     Play_CheckIfIsLiveCleanEnd();
 
     if (!Main_IsOn_OSInterface) {
         return;
     }
 
-    PlayHLS_GetPlayListAsync(true, obj[6], null, Main_ChannelContent, ChannelContent_LoadPreviewResult);
+    PlayHLS_GetPlayListAsync(true, obj[6], ClassicPreview_ticket(Main_ChannelContent,0,true), Main_ChannelContent, ClassicPreview_reply);
 }
 
 function ChannelContent_LoadPreviewResult(StreamData, x) {
+    if (ClassicPreview_blocked()) return;
     if (
         !Main_isStopped &&
         Main_values.Main_Go === Main_ChannelContent &&

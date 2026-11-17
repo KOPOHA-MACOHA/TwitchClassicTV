@@ -1,4 +1,4 @@
-# Twitch Classic 0.22
+# Twitch Classic 0.23
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -154,3 +154,13 @@ ClassicGiant.js fetches channel reward IDs/title/prompt through Twitch GraphQL o
 Tests cover the actual IRC renderer/native callback names, delayed metadata, reward title/prompt and ordinary rewards, no-emote messages, wide/zero-width compositions and narrow chat, toggle restoration, channel isolation, timeout/late callback, and deletion. This does not implement bits power-up EventSub or giant emote sending.
 
 The user confirmed both history windows return zero on 0.21. The root cause remains unresolved; this release makes no claim to fix mobile watch-history interoperability.
+
+## 0.23 account recovery, live archive bookmarks and preview ownership
+
+When the account index produces no usable records, ClassicContinue reads up to three 100-video followedVideos pages, then up to 100 already-known account-local VOD/archive IDs in batches of 20. Only positive video.self.viewingHistory enters recovered history. Current account identity and request generation are checked, zero-progress catalogue entries are excluded, records are deduplicated/newest-first, and RECORDING archives are not mistaken for completed VODs. Candidate requests have a six-second timeout and a combined 18-second fallback budget. Partial failures retain account-local cached history and offer retry. Unknown unfollowed videos remain a coverage limit, explicitly labelled.
+
+ClassicLiveSync validates currentUser/channel/broadcast/archive identity before writing through the existing serialized and confirmed VOD mutation writer. Consecutive active main live playback checkpoints broadcast-relative position, subtracts available native chat latency, and reports at about 30-second intervals. Pause/background/exit flush the last actual sample; background, buffering, thumbnails, clips/VODs and missing/mismatched archives do not advance live bookmarks. Extreme clock disagreement is refused. There is no streak/recap claim. This uses the existing watch-sync opt-out and keeps native DEX unchanged.
+
+ClassicPreview owns thumbnail request generations across header navigation, browsing dialogs and actual screen/channel preview callbacks. Opening a browsing modal clears the native side-panel player and restores static images; old token/playlist callbacks cannot recreate it, even after returning to the same card. Preview starts/restores are refused while a modal/header/settings is active. Modal close can resume live browsing previews. Fullscreen playback and VOD promotion keep their independent lifecycle. No native z-order patch is introduced.
+
+New browser regressions exercise empty-index recovery through paginated self-history, completed/zero/recording records, known unfollowed videos, cached failures, repeated cursors and account switches. Live tests use native named callbacks, archive identity, confirmation/readback, latency, pause/background and missing archives. Preview tests run the actual HLS/native pipeline, close a popup before an old response arrives, verify native clearing before modal visibility, block restores and switch tabs without clearing full playback. Existing key-input tests wait for the actual click guard; a stubbed VOD opener explicitly closes its deliberately unfinished loading popup before preview assertions.

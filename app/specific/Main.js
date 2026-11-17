@@ -672,7 +672,11 @@ function Main_HideElement(element) {
 }
 
 function Main_HideElementWithEle(element) {
-    if (element) element.classList.add('hide');
+    if (element) {
+        var wasModal = /dialog|popup/i.test(element.id) && !element.closest('#scene2') && element.getClientRects().length > 0;
+        element.classList.add('hide');
+        if (wasModal) ClassicPreview_resume();
+    }
 }
 
 function Main_ShowElement(element) {
@@ -680,7 +684,10 @@ function Main_ShowElement(element) {
 }
 
 function Main_ShowElementWithEle(element) {
-    if (element) element.classList.remove('hide');
+    if (element) {
+        if (/dialog|popup/i.test(element.id) && !element.closest('#scene2')) ClassicPreview_stop();
+        element.classList.remove('hide');
+    }
 }
 
 function Main_isElementShowing(element) {
@@ -2989,6 +2996,7 @@ var Main_isStopped = false;
 
 function Main_CheckStop() {
     // Called only by JAVA
+    ClassicLiveSync_flush();
     ClassicVodSync_background();
     Main_isStopped = true;
     PlayChannelPoints_WasPlaying = false;

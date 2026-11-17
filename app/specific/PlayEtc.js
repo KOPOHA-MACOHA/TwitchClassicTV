@@ -1287,6 +1287,7 @@ function Play_CheckLiveThumb(PreventResetFeed, PreventWarn) {
 }
 
 function Play_PlayPauseChange(State, PlayVodClip) {
+    if (!State && PlayVodClip === 1) ClassicLiveSync_flush();
     //called by java
     if (Play_StayDialogVisible()) return;
 

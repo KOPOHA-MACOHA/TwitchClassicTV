@@ -125,6 +125,7 @@ function ClassicUpdates_manual() {
     ClassicUpdates_check(true);
 }
 function ClassicUpdates_showDialog() {
+    ClassicPreview_stop();
     if (!ClassicUpdates.dialog) {
         ClassicUpdates.previousFocus = document.activeElement;
         ClassicUpdates.dialogFocus = 0;
@@ -264,6 +265,7 @@ function ClassicUpdates_hideDialog() {
     var previous = ClassicUpdates.previousFocus;
     ClassicUpdates.previousFocus = null;
     if (previous && previous.isConnected) previous.focus();
+    ClassicPreview_resume();
 }
 function ClassicUpdates_install() {
     if (!Main_HasUpdate || ClassicUpdates.checking || ClassicUpdates.state === 'downloading') return;

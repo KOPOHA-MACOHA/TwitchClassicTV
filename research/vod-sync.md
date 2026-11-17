@@ -72,3 +72,9 @@ On 2026-11-17 the user confirmed the shelf exists on 0.21 and all displayed coun
 ## Authenticated investigation — 2026-11-17
 
 See [Continue Watching protocol findings](continue-watching-protocol.md). The owner-approved account observation distinguishes an empty viewedVideos index from independently readable nonzero video.self.viewingHistory, including RECORDING archives. Mobile operations were extracted from a public Android bundle. This is protocol research, not a new released implementation or a claim of full-history coverage.
+
+## 0.23 implementation
+
+The researched self-history fallback is implemented in ClassicContinue. It is an explicitly incomplete candidate search, not a replacement of private history with Following membership: only records with actual positive server positions are imported. It includes up to 300 catalogue entries and 100 known IDs, with per-account generation checks, a six-second candidate timeout and an 18-second fallback budget. Partial failures preserve the last same-account cache.
+
+ClassicLiveSync uses the verified archiveVideo relationship for active main live playback, reuses serialized updateUserViewedVideo writes and requires readback/returned history confirmation. It skips absent/mismatched archives and refuses extreme clock disagreement. It checkpoints only consecutive active playback and flushes the last actual sample on pause/background/exit. Available native latency is subtracted from broadcast elapsed time. Physical TV interoperability and exact DVR-position behaviour remain device acceptance checks; watch streaks and recap credit are not established.

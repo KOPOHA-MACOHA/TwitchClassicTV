@@ -1226,6 +1226,8 @@ function Screens_addFocus(forceScroll, key) {
 }
 
 function Screens_LoadPreviewSTop(PreventCleanQualities) {
+    ClassicPreview.epoch++;
+    ClassicPreview.requests = {};
     Main_clearTimeout(Screens_LoadPreviewId);
 
     if (Main_IsOn_OSInterface && !PreventCleanQualities) {
@@ -1256,6 +1258,7 @@ var Screens_LoadPreviewId;
 //Clips load too fast, so only call this function after animations have ended
 //Also help to prevent lag on animation
 function Screens_LoadPreview(key) {
+    if (ClassicPreview_blocked()) return;
     var obj_id = ScreenObj[key].posY + '_' + ScreenObj[key].posX;
 
     if (
@@ -1304,6 +1307,7 @@ function Screens_LoadPreview(key) {
 }
 
 function Screens_LoadPreviewRestore(key) {
+    if (ClassicPreview_blocked()) return;
     if (Main_values.Main_Go === Main_ChannelContent) {
         ChannelContent_LoadPreviewRestore();
         return;
@@ -1330,6 +1334,7 @@ function Screens_LoadPreviewRestore(key) {
 }
 
 function Screens_LoadPreviewStart(key, obj) {
+    if (ClassicPreview_blocked()) return;
     if (ScreenObj[key].screenType === 1 && !Settings_Obj_default('show_vod_player')) return;
     Play_CheckIfIsLiveCleanEnd();
 
@@ -1343,6 +1348,8 @@ function Screens_LoadPreviewStart(key, obj) {
         return;
     }
 
+    var previewPosition = (ScreenObj[key].posY * ScreenObj[key].ColumnsCount + ScreenObj[key].posX) % 100,
+        previewTicket = ClassicPreview_ticket(key,previewPosition);
     var id,
         token,
         link,
@@ -1354,10 +1361,10 @@ function Screens_LoadPreviewStart(key, obj) {
         FullxmlHttpGet(
             PlayClip_BaseUrl,
             Play_base_backup_headers_Array,
-            Screens_LoadPreviewResult,
+            ClassicPreview_reply,
             noop_fun,
             key,
-            (ScreenObj[key].posY * ScreenObj[key].ColumnsCount + ScreenObj[key].posX) % 100, //checkResult
+            previewTicket, //checkResult
             'POST', //Method, null for get
             PlayClip_postMessage.replace('%x', obj[0]) //postMessage, null for get
         );
@@ -1394,13 +1401,14 @@ function Screens_LoadPreviewStart(key, obj) {
     PlayHLS_GetPlayListAsync(
         isLive,
         id,
-        (ScreenObj[key].posY * ScreenObj[key].ColumnsCount + ScreenObj[key].posX) % 100,
+        previewTicket,
         key,
-        Screens_LoadPreviewResult
+        ClassicPreview_reply
     );
 }
 
 function Screens_LoadPreviewResult(StreamData, x, y) {
+    if (ClassicPreview_blocked()) return;
     if (ScreenObj[x].screenType === 1 && !Settings_Obj_default('show_vod_player')) return;
     if (
         !Main_isStopped &&

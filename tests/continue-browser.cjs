@@ -347,6 +347,7 @@ const {chromium} = require('playwright-core'),
         });
         // VOD previews default off, but live previews keep their independent preference.
         const preview = await page.evaluate(() => {
+            Play_HideBufferDialog(); // The stubbed VOD opener above intentionally never finishes playback startup.
             const calls = [];
             window.Android = new Proxy(
                 {},
@@ -387,12 +388,21 @@ const {chromium} = require('playwright-core'),
             ScreenObj[Main_UserLive].posX = oldX;
             img.remove();
             Main_IsOn_OSInterface = false;
-            return {off, live, vodPaused, liveStarted: calls.some(c => c.name === 'PlayPause' && c.args[0] === true)};
+            return {
+                off,
+                live,
+                vodPaused,
+                liveStarted: calls.some(c => c.name === 'PlayPause' && c.args[0] === true),
+                blocked: ClassicPreview_blocked(),
+                nav: ClassicShell_navActive,
+                scene: Main_isScene1DocVisible(),
+                dialogs: [...document.querySelectorAll('[role=dialog],[id*=dialog]')].filter(n => n.getClientRects().length).map(n => n.id)
+            };
         });
         assert.equal(!!preview.off, false);
         assert.equal(!!preview.live, true);
         assert.equal(preview.vodPaused, true);
-        assert.equal(preview.liveStarted, true);
+        assert.equal(preview.liveStarted, true, JSON.stringify(preview));
         assert.ok(historyRequests >= 4);
         assert.deepEqual(errors, []);
         console.log(
