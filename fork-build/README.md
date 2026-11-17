@@ -1,4 +1,4 @@
-# Twitch Classic 0.21
+# Twitch Classic 0.22
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -146,3 +146,11 @@ Both GraphQL query shapes were accepted by the current Twitch endpoint without a
 Use the official TV Following root (`user`, aliased to currentUser) with first=20 and excludeHiddenChannels=true, followed by the account root with first=1000 and excludeHiddenChannels=false. Fall back to first=100 if the expanded request fails. Merge and deduplicate records by video ID/newest history timestamp. Import completed and unfinished records into account-local VOD history without removing TV-only entries; respect the VOD-history recording preference. Continue shows five unfinished records, including unknown duration and RECORDING archives. The existing VOD grid is available from a dedicated history action. An empty result has an explicit state/retry and per-account persisted counts, instead of silently hiding the shelf. Missing primary history can use video.self.viewingHistory.
 
 The internal connection has no after/cursor/pageInfo, verified against the current endpoint. No lifetime-history completeness or authenticated mobile parity is claimed. These are existing server bookmarks; this change does not start writing LIVE watch positions or implement streak accounting. Native DEX and signing identity are unchanged.
+
+## 0.22 FFZ:GE reward emotes
+
+ClassicGiant.js fetches channel reward IDs/title/prompt through Twitch GraphQL on chat setup, with per-channel bounded caching and a six-second request timeout. IRC custom-reward-id and source-room-id link messages to the reward map; only titles/prompts containing FFZ:GE activate the feature. No points are redeemed. The last complete emote composition moves below the message with zero-width layers and modifiers retained; rare giant-message layout fitting uses CSS zoom to fit narrow chat without cropping. Normal messages incur no new layout measurement. Existing enlarged messages restore their original location and size when the feature is disabled; moderation removes the enlarged content too. Default on; a normal Chat/Emotes preference toggles it.
+
+Tests cover the actual IRC renderer/native callback names, delayed metadata, reward title/prompt and ordinary rewards, no-emote messages, wide/zero-width compositions and narrow chat, toggle restoration, channel isolation, timeout/late callback, and deletion. This does not implement bits power-up EventSub or giant emote sending.
+
+The user confirmed both history windows return zero on 0.21. The root cause remains unresolved; this release makes no claim to fix mobile watch-history interoperability.

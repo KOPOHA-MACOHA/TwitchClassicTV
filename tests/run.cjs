@@ -26,6 +26,7 @@ const root = require('path').resolve(__dirname, '..');
             'continue',
             'features',
             'emote-layout',
+            'giant-emotes',
             'chat-presentation',
             'player-navigation',
             'multistream',

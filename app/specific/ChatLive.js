@@ -201,6 +201,7 @@ function ChatLive_SetOptions(chat_number, Channel_id, selectedChannel) {
     Chat_loadBadgesGlobal();
 
     ChatLive_selectedChannel_id[chat_number] = Channel_id;
+    ClassicGiant_load(Channel_id);
     ChatLive_selectedChannel[chat_number] = selectedChannel;
     if (ChatLive_selectedChannel[chat_number]) ChatLive_selectedChannel[chat_number] = ChatLive_selectedChannel[chat_number].toLowerCase();
 
@@ -1846,7 +1847,9 @@ function ChatLive_loadChatSuccess(message, chat_number, addToStart) {
         hasbits: hasbits && ChatLive_Highlight_Bits,
         extraMessage: extraMessage,
         extraMessageClass: extraMessageClass,
-        addToStart: addToStart
+        addToStart: addToStart,
+        rewardId: tags['custom-reward-id'],
+        rewardChannel: tags['source-room-id'] || tags['room-id'] || ChatLive_selectedChannel_id[chat_number]
     };
 
     ChatLive_LineAddCheckDelay(chat_number, messageObj);
@@ -2032,6 +2035,7 @@ function ChatLive_ElementAdd(messageObj) {
         Chat_div[messageObj.chat_number].insertBefore(chat_line_holder, Chat_div[messageObj.chat_number].childNodes[0]);
         ChatLive_ElementAddCheckExtra(messageObj);
     }
+    ClassicGiant_prepare(chat_line_holder, messageObj);
 }
 
 function ChatLive_ElementAddCheckExtra(messageObj) {

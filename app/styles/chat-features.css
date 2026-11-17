@@ -167,3 +167,29 @@
     color: #ff8280;
     white-space: nowrap;
 }
+
+/* One enlarged composition below the message, inside its moderation boundary. */
+.classic-giant-emote {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    margin: 0.4em 0;
+    line-height: 1;
+}
+.classic-giant-emote .emoticon {
+    height: min(10.4vh, 128px) !important;
+    max-height: 128px !important;
+    max-width: min(100%, 25vh) !important;
+    width: auto !important;
+    margin: 0;
+    object-fit: contain;
+}
+.classic-giant-emote .classic-emote-layer .emoticon {
+    height: 100% !important;
+    max-height: 100% !important;
+    max-width: 100% !important;
+}
+
+.classic-giant-emote > .classic-emote-effect {
+    max-width: none;
+}

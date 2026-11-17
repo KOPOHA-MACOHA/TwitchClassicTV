@@ -64,3 +64,7 @@ Normalisation no longer rejects positive bookmarks solely because duration is ab
 Official live bookmark source was also inspected: useUpdateUserViewedVideo passes a stream's archiveVideo.id with videoType VOD and position derived from Date.now minus stream.createdAt, rather than the DVR player's getPosition. This release does not implement that additional live-writing hook; receiving existing cloud bookmarks must not be described as full live-watch accounting.
 
 The browser regression covers official-empty/expanded-success, server rejection of the large window/fallback100, completed-history import, unknown duration/recording archives, self-history fallback, partial GraphQL data, always-visible empty state, wrong account and cached failure. Account interoperability remains unverified here.
+
+## 0.22 real-account empty responses
+
+On 2026-11-17 the user confirmed the shelf exists on 0.21 and all displayed counts are zero. Both account-window responses are therefore structurally accepted but contain no edges; the issue is not simply duration filtering or a hidden section. Increasing the window again is not evidence of a fix. Current public GraphQL introspection is disabled. The credential/platform scope versus a distinct mobile history source remains unproven, and no account credential was supplied to this environment. A concrete VOD link from the phone shelf has been requested to investigate per-video resume independently of enumeration. Version 0.22 ships the separate giant-emote feature and does not claim the mobile-history problem is resolved.

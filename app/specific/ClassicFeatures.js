@@ -6,6 +6,7 @@ var ClassicFeatures_defaults = {
     raid_switch: true,
     chat_images: false,
     emote_modifiers: true,
+    giant_emotes: true,
     connected_chatters: true,
     readable_nicks: true,
     emote_proxy: false
@@ -24,6 +25,10 @@ function ClassicFeatures_set(key, value) {
         ClassicVodSync.status.read = value ? 'idle' : 'off';
         ClassicVodSync.status.readAt = 0;
         ClassicVodSync_saveStatus();
+    }
+    if (key === 'giant_emotes') {
+        if (value) ChatLive_selectedChannel_id.forEach(ClassicGiant_load);
+        ClassicGiant_refresh();
     }
     if (key === 'readable_nicks') ClassicChatPresentation_refreshNickColors();
     if (key === 'connected_chatters') {
@@ -52,6 +57,13 @@ function ClassicFeatures_menu(kind) {
                           'emote_modifiers',
                           ru ? 'Модификаторы смайлов' : 'Emote modifiers',
                           ru ? 'Растяжение, отражение, поворот и анимационные эффекты' : 'Stretch, flip, rotate and animate emotes'
+                      ],
+                      [
+                          'giant_emotes',
+                          ru ? 'Гигаэмоуты за баллы канала' : 'Giant reward emotes',
+                          ru
+                              ? 'Награды с FFZ:GE в названии или описании увеличивают последний смайл сообщения'
+                              : 'Rewards marked FFZ:GE enlarge the last emote in the message'
                       ],
                       [
                           'connected_chatters',
