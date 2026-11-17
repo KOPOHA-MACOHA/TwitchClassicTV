@@ -238,7 +238,6 @@ function FollowingClassic_render() {
     screen.status = true;
     screen.dataEnded = true;
     screen.SetPreviewEnable();
-    ClassicContinue_render(panel);
     var live = ClassicPages_el('section', 'following-section');
     live.appendChild(ClassicPages_el('h2', '', ru ? 'В эфире' : 'Live now'));
     var grid = ClassicPages_el('div', 'following-live-grid');
@@ -287,6 +286,7 @@ function FollowingClassic_render() {
         ru ? 'Сейчас никто не в эфире' : 'No followed channels are live'
     );
     panel.appendChild(live);
+    ClassicContinue_render(panel);
     var offline = ClassicPages_el('section', 'following-section');
     offline.appendChild(ClassicPages_el('h2', '', ru ? 'Не в эфире' : 'Offline'));
     var channels = ClassicPages_el('div', 'following-offline-grid'),

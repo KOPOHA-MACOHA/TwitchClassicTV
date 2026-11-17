@@ -206,7 +206,7 @@ const {chromium} = require('playwright-core'),
             () => ClassicContinue.items.length === 7 && !ClassicContinue.loading && FollowingClassic.liveDone && FollowingClassic.channelsDone
         );
         assert.equal(await page.locator('.classic-continue-card').count(), 5);
-        assert.deepEqual(await page.locator('#classic_following_page h2').allTextContents(), ['Продолжить просмотр', 'В эфире', 'Не в эфире']);
+        assert.deepEqual(await page.locator('#classic_following_page h2').allTextContents(), ['В эфире', 'Продолжить просмотр', 'Не в эфире']);
         assert.equal(await page.locator('.classic-continue-card').first().locator('.following-stream-channel').innerText(), 'Не из подписок');
         assert.equal(
             await page.locator('.classic-continue-card').first().locator('.following-stream-title').innerText(),
