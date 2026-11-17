@@ -114,8 +114,9 @@
     display: block;
     margin: 0.4em 0 0.2em;
     vertical-align: middle;
-    width: 9em;
-    height: 5em;
+    width: 16em;
+    height: auto;
+    aspect-ratio: 16 / 9;
     max-width: 100%;
     border-radius: 0.3em;
     overflow: hidden;
@@ -131,6 +132,7 @@
     display: none;
 }
 .classic-chat-image.failed {
+    aspect-ratio: auto;
     width: auto;
     height: auto;
     background: none;

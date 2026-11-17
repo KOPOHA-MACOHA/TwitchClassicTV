@@ -1,4 +1,4 @@
-# Twitch Classic 0.26
+# Twitch Classic 0.27
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -172,3 +172,7 @@ Exit from the header keeps its navigation context suspended under the modal. Can
 ## 0.26 initial Following focus
 
 Before followed streams arrive, the Live section owns a visible, non-actionable loading focus target. Cached or faster-loading continuation/offline cards cannot take initial focus. Down allows an intentional selection in the already loaded sections, and a late stream response preserves that keyed selection. OK on the loading target is ignored and is never queued for a later card. Held-OK activation is canceled when navigating, refreshing, switching accounts or losing its keyed target during a render; a matching target survives a metadata-only render. The continuation browser regression delays the actual HTTP stream response, primes the history cache, delivers history first, and exercises keydown/keyup across the response and user navigation.
+
+## 0.27 larger chat images
+
+Image previews grow from a 9em by 5em frame to a 16em-wide 16:9 frame, bounded to the chat width. The frame scales down proportionally in narrow chat layouts. Images retain object-fit containment and their separate line beneath badges/nickname. Failed-image links have no forced aspect ratio.
