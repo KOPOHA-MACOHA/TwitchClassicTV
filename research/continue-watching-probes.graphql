@@ -1,0 +1,59 @@
+# Diagnostic selections derived from mobile/web documents, not a lifetime-history contract.
+query MobileFollowingHistoryProbe {
+    user {
+        id
+        viewedVideos(first: 5) {
+            edges {
+                node {
+                    id
+                    title
+                    lengthSeconds
+                    owner { id login }
+                    self { viewingHistory { position } }
+                }
+            }
+        }
+    }
+}
+query MobileRecommendedHistoryProbe {
+    currentUser {
+        id
+        viewedVideos(first: 1, sort: RECOMMENDED) {
+            edges {
+                history { position }
+                node { id title lengthSeconds owner { id login } }
+            }
+        }
+    }
+}
+# A candidate catalogue: ONLY records with actual viewingHistory qualify as watched.
+# This cannot discover all unfollowed/unknown videos and must not be labelled full history.
+query CandidateResumePositions($first: Int!, $after: Cursor) {
+    currentUser {
+        id
+        followedVideos(first: $first, after: $after, types: [ARCHIVE]) {
+            pageInfo { hasNextPage endCursor }
+            edges {
+                cursor
+                node {
+                    id
+                    title
+                    status
+                    lengthSeconds
+                    owner { id login }
+                    self { viewingHistory { position updatedAt } }
+                }
+            }
+        }
+    }
+}
+query LiveArchiveIdentity($login: String!) {
+    user(login: $login) {
+        id
+        stream {
+            id
+            createdAt
+            archiveVideo { id status lengthSeconds }
+        }
+    }
+}

@@ -68,3 +68,7 @@ The browser regression covers official-empty/expanded-success, server rejection 
 ## 0.22 real-account empty responses
 
 On 2026-11-17 the user confirmed the shelf exists on 0.21 and all displayed counts are zero. Both account-window responses are therefore structurally accepted but contain no edges; the issue is not simply duration filtering or a hidden section. Increasing the window again is not evidence of a fix. Current public GraphQL introspection is disabled. The credential/platform scope versus a distinct mobile history source remains unproven, and no account credential was supplied to this environment. A concrete VOD link from the phone shelf has been requested to investigate per-video resume independently of enumeration. Version 0.22 ships the separate giant-emote feature and does not claim the mobile-history problem is resolved.
+
+## Authenticated investigation — 2026-11-17
+
+See [Continue Watching protocol findings](continue-watching-protocol.md). The owner-approved account observation distinguishes an empty viewedVideos index from independently readable nonzero video.self.viewingHistory, including RECORDING archives. Mobile operations were extracted from a public Android bundle. This is protocol research, not a new released implementation or a claim of full-history coverage.
