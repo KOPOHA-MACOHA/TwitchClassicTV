@@ -500,7 +500,7 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
             assert.equal(await page.locator('.following-stream-card').count(), 1);
         }
         const sections = await page.locator('#classic_following_page h2').allTextContents();
-        assert.deepEqual(sections, ['Продолжить просмотр', 'В эфире', 'Не в эфире']);
+        assert.deepEqual(sections, ['В эфире', 'Продолжить просмотр', 'Не в эфире']);
         await page.screenshot({path: 'tests/following-classic.png'});
         await page.evaluate(() => {
             FollowingClassic.cursor = FollowingClassic.rows.findIndex(row => row.section === 'live');
@@ -519,8 +519,10 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         assert.equal(await page.locator('.following-stream-card').count(), 1);
         assert.equal(await page.locator('.following-channel-card').count(), 1);
 
-        await page.keyboard.press('ArrowUp');
+        await page.keyboard.press('ArrowDown');
         assert.equal(await page.evaluate(() => FollowingClassic.rows[FollowingClassic.cursor].key), 'continue:retry');
+        await page.keyboard.press('ArrowUp');
+        assert.equal(await page.evaluate(() => FollowingClassic.rows[FollowingClassic.cursor].section), 'live');
         await page.keyboard.press('ArrowUp');
         assert.equal(await page.evaluate(() => ClassicShell_navActive), true);
         await page.keyboard.press('ArrowDown');
