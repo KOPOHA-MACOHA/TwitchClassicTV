@@ -109,6 +109,10 @@ function PlayAutoClaim_BonusCheckSuccess(obj, key, id) {
         user = data && data.user,
         points = user && user.channel && user.channel.self && user.channel.self.communityPoints;
 
+    if (id === PlayAutoClaim_Generation && PlayChannelPoints_IsCurrentStream() && PlayChannelPoints_Active()) {
+        ClassicSyncReport_record('bonus', obj.status !== 200 ? 'http' : !points ? 'unavailable' :
+            points.availableClaim ? 'available' : 'none', obj.status);
+    }
     if (points && Main_A_equals_B(user.id, PlayChannelPoints_ChannelId)) {
         PlayAutoClaim_LastBalance = points.balance;
         PlayAutoClaim_LastChannel = Play_data.data[1];
@@ -135,7 +139,10 @@ function PlayAutoClaim_BonusClaimSuccess(obj, key, id) {
     var data = PlayAutoClaim_Data(obj, id),
         result = data && data.claimCommunityPoints;
 
-    if (!result || result.error || !result.currentPoints) return;
+    var claimed = result && !result.error && Number.isFinite(result.currentPoints);
+    if (id === PlayAutoClaim_Generation && PlayChannelPoints_IsCurrentStream() && PlayChannelPoints_Active())
+        ClassicSyncReport_record('bonus', obj.status !== 200 ? 'http' : claimed ? 'claimed' : 'rejected', obj.status);
+    if (!claimed) return;
 
     PlayAutoClaim_LastBalance = result.currentPoints;
     var earned = result.currentPoints - (key || 0);

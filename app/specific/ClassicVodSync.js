@@ -127,6 +127,8 @@ function ClassicVodSync_finish(id, error, data) {
     window.clearTimeout(request.timer);
     // Account changes invalidate responses, including writes completed after logout.
     if (!ClassicVodSync_allowed(request.user)) error = 'cancelled';
+    if (error !== 'cancelled' && request.operation === 'ClassicVodSyncRead')
+        ClassicSyncReport_record('vod-read', error || 'ok');
     try {
         request.done(error, data);
     } catch (e) {
@@ -140,8 +142,9 @@ function ClassicVodSync_history(video, videoId) {
     return {position: Math.floor(history.position), updatedAt: Date.parse(history.updatedAt) || 0};
 }
 function ClassicVodSync_remoteHistory(data, videoId, userId) {
-    var direct = ClassicVodSync_history(data.video, videoId);
     var user = data.currentUser;
+    if (user && String(user.id) !== userId) return null;
+    var direct = ClassicVodSync_history(data.video, videoId);
     if (user && String(user.id) === userId && user.viewedVideos && Array.isArray(user.viewedVideos.edges)) {
         user.viewedVideos.edges.forEach(function (edge) {
             if (!edge || !edge.node || String(edge.node.id) !== videoId) return;
@@ -252,6 +255,7 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
         }
         var remote = !error && ClassicVodSync_remoteHistory(data, video, user.id);
         ClassicVodSync.status.read = error || (remote ? 'received' : !data.video ? 'unavailable' : !data.video.self ? 'auth' : 'empty');
+        ClassicSyncReport_record('resume', ClassicVodSync.status.read, remote ? remote.position : null);
         if (remote) {
             // A fresh account response wins, including a deliberate backward seek on another device.
             // Device clocks and unconfirmed local writes cannot reliably establish server ordering.
@@ -268,6 +272,7 @@ function ClassicVodSync_open(continueStart, fromStart, resume) {
                 ClassicVodSync.status.source = 'local';
             }
         }
+        if (s.remote !== null) ClassicVodSync.status.position = s.remote;
         ClassicVodSync.status.readAt = Date.now();
         ClassicVodSync_saveStatus();
         continueStart();
@@ -292,12 +297,20 @@ function ClassicVodSync_readForSession(session, done) {
             window.setTimeout(begin, 50);
             return;
         }
-        ClassicVodSync_request(
-            session.user,
-            {operationName: 'ClassicVodSyncRead', query: ClassicVodSync_readQuery, variables: {id: session.video}},
-            Math.max(1, deadline - Date.now()),
-            done
-        );
+        function request(query, callback) {
+            ClassicVodSync_request(
+                session.user,
+                {operationName: 'ClassicVodSyncRead', query: query, variables: {id: session.video}},
+                Math.max(1, deadline - Date.now()),
+                callback
+            );
+        }
+        request(ClassicVodSync_readQuery, function (error, data) {
+            if (error === 'unsupported' &&
+                ClassicVodSync.session === session && Date.now() < deadline) {
+                request('query ClassicVodSyncRead($id:ID!){video(id:$id){id self{viewingHistory{position updatedAt}}} currentUser{id}}', done);
+            } else done(error, data);
+        });
     }
     begin();
 }
@@ -322,6 +335,7 @@ function ClassicVodSync_pauseChanged(playing) {
         s.refreshing = false;
         var remote = !error && ClassicVodSync_remoteHistory(data, s.video, s.user.id);
         ClassicVodSync.status.read = error || (remote ? 'received' : 'empty');
+        ClassicSyncReport_record('resume', ClassicVodSync.status.read, remote ? remote.position : null);
         ClassicVodSync.status.readAt = Date.now();
         if (remote) {
             ClassicVodSync.status.source = 'cloud';
@@ -358,6 +372,7 @@ function ClassicVodSync_started(seconds) {
     if (!ClassicVodSync_current(s)) return;
     s.started = true;
     s.expected = Math.max(0, Number(seconds) || 0);
+    ClassicSyncReport_record('vod-start', ClassicVodSync.status.source || 'player', Math.floor(s.expected));
 }
 function ClassicVodSync_previewPosition() {
     var s = ClassicVodSync.session;
@@ -486,6 +501,7 @@ function ClassicVodSync_written(writer, record, error) {
     // An ambiguous timed-out mutation must not be followed by more writes that it could overtake.
     if (error === 'timeout' || error === 'auth' || error === 'unsupported' || error === 'cancelled') writer.blocked = true;
     if (error !== 'cancelled') {
+        ClassicSyncReport_record('vod-write', error || 'saved', record.position);
         if (ClassicVodSync.status.user === writer.user.id && ClassicVodSync.status.video === writer.video) {
             ClassicVodSync.status.write = error || 'saved';
             ClassicVodSync.status.writeAt = Date.now();
@@ -639,6 +655,7 @@ function ClassicVodSync_menu() {
             },
             'history',
             enabled ? (ru ? 'Вкл.' : 'On') : ru ? 'Выкл.' : 'Off'
-        )
+        ),
+        ClassicShell_row(ru ? 'Отчёт по QR-коду' : 'Report by QR code', '', ClassicSyncReport_open, 'info-circle')
     ]);
 }

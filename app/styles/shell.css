@@ -805,3 +805,20 @@ body.classic-shell {
     border-color: #9146ff;
     background: #303036;
 }
+
+.classic-sync-report {
+    display: flex;
+    align-items: center;
+    gap: 2vw;
+    padding: 1vh 0 2vh;
+}
+.classic-sync-report .qr-login-code {
+    width: 40vh;
+    height: 40vh;
+}
+.classic-sync-report pre {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 1.7vh/1.5 monospace;
+}

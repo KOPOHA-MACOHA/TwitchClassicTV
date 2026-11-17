@@ -415,15 +415,21 @@ const assert = require('assert/strict');
                 language: 'en',
                 type: 'live'
             };
+            PlayRaid_SetChannel('457');
             fixtureReply(target, {data: [stream]});
+            const afterManualSwitch = raidOpened;
+            PlayRaid_SetChannel('456');
+            PlayRaid_HandleRaid({from_broadcaster_user_id: '456', to_broadcaster_user_login: 'target'});
+            fixtureReply(fixtureRequests.at(-1), {data: [stream]});
             const opened = raidOpened;
             PlayRaid_Close();
             fixtureReply(target, {data: [stream]});
-            return {body: JSON.parse(sub.body), ignored, opened, afterClose: raidOpened};
+            return {body: JSON.parse(sub.body), ignored, opened, afterManualSwitch, afterClose: raidOpened};
         });
         assert.equal(raid.body.type, 'channel.raid');
         assert.equal(raid.body.condition.from_broadcaster_user_id, '456');
         assert.equal(raid.ignored, true);
+        assert.equal(raid.afterManualSwitch, 0);
         assert.equal(raid.opened, 1);
         assert.equal(raid.afterClose, 1);
         assert.deepEqual(errors, []);

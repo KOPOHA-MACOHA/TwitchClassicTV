@@ -186,6 +186,7 @@ function PlayChannelPoints_SendMinuteWatched() {
     PlayAutoClaim_Tick(PlayChannelPoints_ChannelId);
     if (!PlayChannelPoints_ReportEnabled()) return;
     if (!PlayChannelPoints_SpadeUrl) {
+        ClassicSyncReport_record('minute', 'endpoint-pending');
         PlayChannelPoints_DiscoverSpadeUrl();
         return;
     }
@@ -217,7 +218,7 @@ function PlayChannelPoints_SendMinuteWatched() {
 function PlayChannelPoints_SendSuccess(obj, key, id) {
     if (id !== PlayChannelPoints_DiscoveryId || !PlayChannelPoints_IsCurrentStream()) return;
 
-    key = key || 0;
+    ClassicSyncReport_record('minute', 'http', obj.status);
     if (obj.status >= 200 && obj.status < 300) PlayChannelPoints_LastReport = Date.now();
 
     //0 = no response (blocked host, DNS or network failure), 404/410 = endpoint gone: try the next one, rediscover when none is left

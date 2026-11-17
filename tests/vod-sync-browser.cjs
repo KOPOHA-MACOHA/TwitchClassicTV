@@ -1,3 +1,5 @@
+const {PNG} = require('pngjs');
+const jsQR = require('jsqr');
 const {chromium} = require('playwright-core'),
     assert = require('assert/strict');
 (async () => {
@@ -163,6 +165,8 @@ const {chromium} = require('playwright-core'),
                                     delayed.push(r);
                                     return;
                                 }
+                                if (syncMode === 'direct-only' && parsed.query && parsed.query.includes('viewedVideos'))
+                                    return setTimeout(() => respond(r, {errors: [{message: 'Shelf unavailable'}]}), 0);
                                 if (syncMode === 'auth')
                                     return setTimeout(
                                         () =>
@@ -560,6 +564,18 @@ const {chromium} = require('playwright-core'),
         );
         assert.equal(partial.error, null);
         assert.equal(partial.position, 812);
+        const beforeDirect = await page.evaluate(() => {
+            syncMode = 'direct-only';
+            serverPosition = 815;
+            const count = syncCalls.length;
+            prepareVod('476');
+            return count;
+        });
+        await page.waitForFunction(() => nativeStarts.length === 1);
+        assert.equal(await page.evaluate(() => nativeClock), 815);
+        assert.deepEqual(await page.evaluate(count => syncCalls.slice(count).map(r => r.body.query.includes('viewedVideos')), beforeDirect),
+            [true, false], 'rejecting the shelf falls back to one direct read');
+        await page.evaluate(() => { syncMode = 'ok'; });
         // The account shelf's Continue action overrides the ordinary Start Over preference.
         await page.evaluate(() => {
             Settings_value.vod_dialog.defaultValue = 2;
@@ -737,6 +753,17 @@ const {chromium} = require('playwright-core'),
         await page.keyboard.press('Enter');
         assert.match(await page.locator('#classic_preferences h1').innerText(), /Синхронизация просмотра/);
         await page.screenshot({path: 'tests/vod-sync-classic.png'});
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Enter');
+        const qr = PNG.sync.read(await page.locator('.classic-sync-report .qr-login-code').screenshot());
+        const decoded = jsQR(new Uint8ClampedArray(qr.data), qr.width, qr.height);
+        assert.ok(decoded, 'diagnostic QR is readable');
+        assert.equal(decoded.data, await page.locator('.classic-sync-report pre').textContent());
+        assert.match(decoded.data, /resume .*received 600/);
+        assert.doesNotMatch(decoded.data, /private-token|Authorization|access_token|videoID|userID/);
+        await page.keyboard.press('Escape');
+        assert.match(await page.locator('#classic_preferences_rows .is-focused').innerText(), /QR/);
+        await page.keyboard.press('ArrowUp');
         await page.keyboard.press('Enter');
         assert.equal(await page.evaluate(() => ClassicFeatures_enabled('vod_sync')), false);
         const opted = await page.evaluate(() => syncCalls.length);

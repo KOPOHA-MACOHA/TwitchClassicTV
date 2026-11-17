@@ -342,6 +342,9 @@ function ClassicContinue_load(force) {
             ClassicContinue_import(account);
             Main_setItem('classic_continue_cache_' + account, JSON.stringify(user.viewedVideos));
         }
+        var outcome = ClassicContinue.cached ? 'cached' : ClassicContinue.error ? 'failed' : ClassicContinue.partial ? 'partial' :
+            fallbackStarted ? 'recovered' : 'index';
+        ClassicSyncReport_record('history', outcome, ClassicContinue.all.length, ClassicContinue.items.length);
         if (fallbackStarted) received.push((ClassicShell_ru() ? 'проверено видео ' : 'videos checked ') + scanned);
         ClassicContinue.status =
             (ClassicShell_ru() ? 'Twitch: получено ' : 'Twitch: received ') +

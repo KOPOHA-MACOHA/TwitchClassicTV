@@ -43,8 +43,6 @@ function PlayRaid_Enabled() {
 
 //Called every time the main player successfully loads a live stream
 function PlayRaid_SetChannel(channelId) {
-    PlayRaid_RaidDone = false;
-
     if (
         !channelId ||
         !PlayRaid_Enabled() ||
@@ -61,6 +59,10 @@ function PlayRaid_SetChannel(channelId) {
     //A reload of the current stream (ad escape) must not drop and re-create a working subscription
     if (PlayRaid_SubscriptionId && PlayRaid_Socket && PlayRaid_Socket.readyState === 1 && PlayRaid_ChannelId === channelId + '') return;
 
+    if (PlayRaid_ChannelId !== String(channelId) || !PlayRaid_Active) {
+        PlayRaid_SwitchCheckId++;
+        PlayRaid_RaidDone = false;
+    }
     PlayRaid_Generation++;
     PlayRaid_ChannelId = channelId + '';
     PlayRaid_Active = true;
@@ -153,6 +155,7 @@ function PlayRaid_onMessage(data) {
         if (PlayRaid_Socket) PlayRaid_Socket.close();
     } else if (type === 'revocation') {
         PlayRaid_SubscriptionId = null;
+        ClassicSyncReport_record('raid', 'revoked');
     }
 }
 
@@ -218,6 +221,7 @@ function PlayRaid_Subscribe() {
 function PlayRaid_SubscribeSuccess(responseObj, key, generation) {
     if (!PlayRaid_Active || generation !== PlayRaid_Generation) return;
     var status = responseObj.status;
+    ClassicSyncReport_record('raid', 'http', status);
 
     if (status === 200 || status === 202 || status === 409) {
         PlayRaid_SubscribeRetries = 0;
@@ -254,6 +258,7 @@ function PlayRaid_HandleRaid(event) {
     if (!PlayRaid_Enabled()) return;
 
     PlayRaid_RaidDone = true;
+    ClassicSyncReport_record('raid', 'received');
 
     PlayRaid_TargetName = event.to_broadcaster_user_name || event.to_broadcaster_user_login;
 
@@ -261,7 +266,7 @@ function PlayRaid_HandleRaid(event) {
 
     Play_SavePlayData();
 
-    PlayRaid_SwitchCheckId = new Date().getTime();
+    PlayRaid_SwitchCheckId++;
     BaseXmlHttpGet(
         Main_helix_api + 'streams?user_login=' + event.to_broadcaster_user_login,
         PlayRaid_SwitchSuccess,
@@ -298,6 +303,7 @@ function PlayRaid_SwitchSuccess(responseText, key, checkId) {
 
     Play_data = JSON.parse(JSON.stringify(Play_data_base));
     Play_data.data = ScreensObj_LiveCellArray(response.data[0]);
+    ClassicSyncReport_record('raid', 'switched');
 
     Main_openStream();
 }
@@ -305,5 +311,6 @@ function PlayRaid_SwitchSuccess(responseText, key, checkId) {
 function PlayRaid_SwitchFail(key, checkId) {
     if (checkId !== PlayRaid_SwitchCheckId) return;
 
+    ClassicSyncReport_record('raid', 'unavailable');
     Play_showWarningMiddleDialog(PlayRaid_TargetName + STR_SPACE_HTML + STR_LIVE + STR_IS_OFFLINE, 2000);
 }
