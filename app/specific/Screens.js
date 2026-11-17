@@ -1181,6 +1181,7 @@ function Screens_loadDataSuccessFinishEnd(SkipHidedialog) {
 }
 
 function Screens_addFocus(forceScroll, key) {
+    if (key === Main_values.Main_Go && (ClassicShell_navActive || ChannelClassic_tabFocus || Main_isExitDialogVisible())) return;
     if (key === Main_UserLive && FollowingClassic.active) { FollowingClassic_focus(forceScroll); return; }
     if (ScreenObj[key].emptyContent) {
         if (ScreenObj[key].HasSwitches) {

@@ -768,20 +768,25 @@ function Main_setExitDialog() {
 }
 
 function Main_showExitDialog() {
+    if (Main_isExitDialogVisible()) return;
+    FollowingClassic_cancelHold();
+    Main_ExitCursor = 0;
     Main_textContent('main_dialog_exit_text', ClassicShell_ru() ? 'Выйти из Twitch Classic?' : 'Exit Twitch Classic?');
     Main_setExitDialog();
     Main_ShowElement('main_dialog_exit');
-    Main_PreventClick(true, Main_ExitDialog, true);
+    Main_PreventClick(true, Main_ExitDialog);
+    ClassicShell_syncNav();
+    Main_ExitCursorSet();
 }
 
 function Main_HideExitDialog() {
+    if (!Main_isExitDialogVisible()) return;
     Main_PreventClick(false, Main_ExitDialog);
-
-    Main_SwitchScreen();
     Main_clearExitDialog();
     Main_HideElement('main_dialog_exit');
     Main_ExitCursor = 0;
-    Main_ExitCursorSet();
+    if (ClassicShell_navActive) ClassicShell_focusNavButton();
+    else Main_SwitchScreen();
 }
 
 function Main_ExitCursorSet() {
@@ -791,6 +796,11 @@ function Main_ExitCursorSet() {
     if (!Main_ExitCursor) Main_AddClass('exit_app_cancel', 'button_dialog_focused');
     else if (Main_ExitCursor === 1) Main_AddClass('exit_app_minimize', 'button_dialog_focused');
     else Main_AddClass('exit_app_close', 'button_dialog_focused');
+    if (Main_isExitDialogVisible()) {
+        var button = document.getElementById(['exit_app_cancel', 'exit_app_minimize', 'exit_app_close'][Main_ExitCursor]);
+        button.tabIndex = -1;
+        button.focus();
+    }
 }
 
 function Main_isExitDialogVisible() {
@@ -1987,7 +1997,9 @@ function Main_updateUserFeed() {
 }
 
 function Main_ExitDialog(event) {
-    event.stopPropagation();
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type !== 'keydown' || event.repeat) return;
 
     switch (event.keyCode) {
         case KEY_KEYBOARD_BACKSPACE:

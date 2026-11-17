@@ -340,6 +340,7 @@ function FollowingClassic_status(section, done, error, count, empty) {
     } else if (!count) section.appendChild(ClassicPages_el('p', 'following-status', empty));
 }
 function FollowingClassic_focus(scroll) {
+    if (ClassicShell_navActive || Main_isExitDialogVisible()) return;
     FollowingClassic.rows.forEach(function (row, index) {
         row.node.classList.toggle('is-focused', index === FollowingClassic.cursor);
         row.node.tabIndex = index === FollowingClassic.cursor ? 0 : -1;
@@ -361,6 +362,7 @@ function FollowingClassic_key(event) {
         if (row) FollowingClassic.focusKey = row.key;
     }
     if (key === KEY_RETURN || key === KEY_KEYBOARD_BACKSPACE) {
+        if (event.repeat) return;
         ClassicShell_navIndex = 0;
         ClassicShell_focusNav();
         return;
@@ -482,6 +484,7 @@ function ChannelClassic_buttons() {
     return document.querySelectorAll('#classic_channel_page .classic-channel-tabs button, #classic_channel_page .classic-channel-watch');
 }
 function ChannelClassic_focus() {
+    if (ClassicShell_navActive || Main_isExitDialogVisible()) return;
     var buttons = ChannelClassic_buttons();
     buttons.forEach(function (button, index) {
         button.classList.toggle('is-focused', index === ChannelClassic_cursor);
@@ -580,6 +583,8 @@ function ChannelClassic_clearTabs() {
     Main_removeEventListener('keydown', ChannelClassic_tabsKey);
 }
 function ChannelClassic_focusTabs(key) {
+    ClassicPreview_stop();
+    Screens_RemoveFocus(key);
     ChannelClassic_tabFocus = true;
     ChannelClassic_tabIndex = key === Main_ChannelVod ? 1 : 2;
     Main_removeEventListener('keydown', ScreenObj[key].key_fun);
@@ -709,7 +714,7 @@ function FollowingClassic_keyUp(event) {
     var activate = !FollowingClassic.holdLong,
         key = FollowingClassic.holdKey;
     FollowingClassic_cancelHold();
-    if (activate && FollowingClassic.active && Main_isScene1DocVisible()) {
+    if (activate && FollowingClassic.active && Main_isScene1DocVisible() && !ClassicShell_navActive && !ClassicPreview_blocked()) {
         var row = FollowingClassic.rows.find(function (item) {
             return item.key === key;
         });

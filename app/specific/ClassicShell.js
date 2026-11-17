@@ -163,20 +163,30 @@ function ClassicShell_syncNav() {
     else if ([Main_games, Main_aGame, Main_AGameVod, Main_AGameClip].indexOf(screen) !== -1) selected = 2;
     else if ([Main_Search, Main_SearchLive, Main_SearchGames, Main_SearchChannels, Main_SearchVod].indexOf(screen) !== -1) selected = 3;
     else if ([Main_Users, Main_addUser, Main_HistoryLive, Main_HistoryVod, Main_HistoryClip].indexOf(screen) !== -1) selected = 5;
+    var focusVisible = ClassicShell_navActive && !Main_isExitDialogVisible();
     buttons.forEach(function (b, index) {
         b.classList.toggle('active', index === selected);
-        b.classList.toggle('nav-focus', ClassicShell_navActive && index === ClassicShell_navIndex);
-        b.tabIndex = ClassicShell_navActive && index === ClassicShell_navIndex ? 0 : -1;
+        b.classList.toggle('nav-focus', focusVisible && index === ClassicShell_navIndex);
+        b.tabIndex = focusVisible && index === ClassicShell_navIndex ? 0 : -1;
     });
+}
+function ClassicShell_focusNavButton() {
+    ClassicShell_syncNav();
+    var button = document.querySelectorAll('#classic_nav button')[ClassicShell_navIndex];
+    if (button && !Main_isExitDialogVisible()) button.focus();
 }
 function ClassicShell_focusNav() {
     ClassicPreview_stop();
-    if (ClassicShell_navActive) return;
+    if (ClassicShell_navActive) {
+        ClassicShell_focusNavButton();
+        return;
+    }
     var screen = ScreenObj[Main_values.Main_Go];
     if (FollowingClassic.active && Main_values.Main_Go === Main_UserLive) {
         document.querySelectorAll('#classic_following_page .is-focused').forEach(function (row) {
             row.classList.remove('is-focused');
         });
+        FollowingClassic_cancelHold();
         ClassicShell_navReturn = {kind: 'following'};
         Main_removeEventListener('keydown', FollowingClassic_key);
     } else if (ChannelClassic_active && Main_values.Main_Go === Main_ChannelContent) {
@@ -214,10 +224,8 @@ function ClassicShell_focusNav() {
     }
     Main_removeEventListener('keydown', Sidepannel_handleKeyDownMain);
     ClassicShell_navActive = true;
-    ClassicShell_syncNav();
     Main_addEventListener('keydown', ClassicShell_navKey);
-    var button = document.querySelectorAll('#classic_nav button')[ClassicShell_navIndex];
-    if (button) button.focus();
+    ClassicShell_focusNavButton();
 }
 function ClassicShell_blurNav(resume) {
     var context = ClassicShell_navReturn;
@@ -292,8 +300,9 @@ function ClassicShell_navKey(event) {
     else if (event.keyCode === KEY_RETURN || event.keyCode === KEY_KEYBOARD_BACKSPACE) {
         // Following replaces a root grid; it is not a nested section to return to.
         var returnToSection = ClassicShell_navReturn && ['screen', 'following'].indexOf(ClassicShell_navReturn.kind) === -1;
-        ClassicShell_blurNav(true);
-        if (!returnToSection) Main_showExitDialog();
+        if (event.repeat) return;
+        if (returnToSection) ClassicShell_blurNav(true);
+        else Main_showExitDialog();
     }
 }
 function ClassicShell_screenKey(key, event) {

@@ -486,18 +486,46 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         assert.equal(await page.locator('.following-channel-card').count(), 1);
         assert.equal(livePages, 2);
         assert.equal(channelPages, 2);
-        // Following is also a root page. Back must not cycle header <-> cards.
-        for (const key of ['Escape', 'Backspace']) {
-            await page.keyboard.press(key);
+        // Cancel, Back and the auto-close preserve the header which opened the dialog.
+        // No screen reinit, hidden Enter click or async focus theft is allowed.
+        for (const close of ['Enter', 'Escape', 'Backspace', 'timeout']) {
+            const cardKey = await page.evaluate(() => FollowingClassic.focusKey);
+            await page.keyboard.press('Escape');
             assert.equal(await page.evaluate(() => ClassicShell_navActive), true);
-            assert.equal(await page.locator('#main_dialog_exit').isVisible(), false);
-            await page.keyboard.press(key);
+            await page.keyboard.press('ArrowRight');
+            assert.equal(await page.evaluate(() => ClassicShell_navIndex), 1);
+            await page.evaluate(() => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'Escape', keyCode: KEY_RETURN, bubbles: true, repeat: true
+            })));
+            assert.equal(await page.locator('#main_dialog_exit').isVisible(), false, 'held Back must not open exit from the header');
+            await page.keyboard.press('Escape');
             assert.equal(await page.locator('#main_dialog_exit').isVisible(), true);
-            assert.match(await page.locator('#main_dialog_exit_text').innerText(), /Twitch Classic/);
-            await page.keyboard.press(key);
+            assert.equal(await page.evaluate(() => document.activeElement.id), 'exit_app_cancel');
+            assert.equal(await page.locator('#classic_nav .nav-focus').count(), 0);
+            await page.keyboard.press('ArrowRight');
+            assert.equal(await page.evaluate(() => document.activeElement.id), 'exit_app_minimize');
+            await page.keyboard.press('ArrowLeft');
+            await page.evaluate(() => {
+                FollowingClassic_render();
+                document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: 'Enter', keyCode: KEY_ENTER, bubbles: true, repeat: true
+                }));
+            });
+            assert.equal(await page.evaluate(() => document.activeElement.id), 'exit_app_cancel');
+            assert.equal(await page.locator('#main_dialog_exit').isVisible(), true);
+            if (close === 'timeout') await page.waitForFunction(() => !Main_isExitDialogVisible(), {timeout: 8000});
+            else await page.keyboard.press(close);
             assert.equal(await page.locator('#main_dialog_exit').isVisible(), false);
-            assert.equal(await page.evaluate(() => FollowingClassic.active && !ClassicShell_navActive), true);
-            assert.equal(await page.locator('.following-stream-card').count(), 1);
+            assert.equal(await page.evaluate(() => FollowingClassic.active && ClassicShell_navActive), true);
+            assert.equal(await page.evaluate(() => document.activeElement === document.querySelectorAll('#classic_nav button')[1]), true);
+            assert.equal(await page.locator('#classic_nav .nav-focus').count(), 1);
+            assert.equal(await page.locator('#classic_following_page .is-focused').count(), 0);
+            assert.equal(livePages, 2, 'closing exit must not reload streams');
+            assert.equal(channelPages, 2, 'closing exit must not reload channels');
+            await page.keyboard.press('ArrowDown');
+            assert.equal(await page.evaluate(() => ClassicShell_navActive), false);
+            assert.equal(await page.evaluate(() => FollowingClassic.focusKey), cardKey);
+            assert.equal(await page.locator('#classic_following_page .is-focused').count(), 1);
         }
         const sections = await page.locator('#classic_following_page h2').allTextContents();
         assert.deepEqual(sections, ['В эфире', 'Продолжить просмотр', 'Не в эфире']);
@@ -617,12 +645,23 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
 
         await page.evaluate(() => {
             const k = Main_values.Main_Go;
+            Screens_RemoveFocus(k);
             ScreenObj[k].posY = -1;
             ScreenObj[k].posX = 0;
             Screens_addFocus(true, k);
         });
         await page.keyboard.press('ArrowUp');
         assert.equal(await page.evaluate(() => ChannelClassic_tabFocus), true);
+        assert.equal(await page.locator('#classic_channel_tabs .is-focused').count(), 1);
+        assert.equal(await page.locator('#screens_holder .stream_thumbnail_focused, #screens_holder .stream_switch_focused').count(), 0);
+        await page.evaluate(() => Screens_addFocus(true, Main_ChannelVod));
+        assert.equal(await page.locator('#screens_holder .stream_thumbnail_focused, #screens_holder .stream_switch_focused').count(), 0,
+            'late grid load must not steal focus from channel tabs');
+        await page.keyboard.press('ArrowUp');
+        assert.equal(await page.locator('#classic_channel_tabs .is-focused').count(), 0);
+        assert.equal(await page.locator('#classic_nav .nav-focus').count(), 1);
+        await page.keyboard.press('ArrowDown');
+        assert.equal(await page.locator('#classic_channel_tabs .is-focused').count(), 1);
         await page.keyboard.press('ArrowRight');
         await page.keyboard.press('Enter');
         await page.waitForFunction(

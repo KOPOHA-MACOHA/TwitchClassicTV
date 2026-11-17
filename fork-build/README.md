@@ -1,4 +1,4 @@
-# Twitch Classic 0.24
+# Twitch Classic 0.25
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
@@ -164,3 +164,7 @@ ClassicLiveSync validates currentUser/channel/broadcast/archive identity before 
 ClassicPreview owns thumbnail request generations across header navigation, browsing dialogs and actual screen/channel preview callbacks. Opening a browsing modal clears the native side-panel player and restores static images; old token/playlist callbacks cannot recreate it, even after returning to the same card. Preview starts/restores are refused while a modal/header/settings is active. Modal close can resume live browsing previews. Fullscreen playback and VOD promotion keep their independent lifecycle. No native z-order patch is introduced.
 
 New browser regressions exercise empty-index recovery through paginated self-history, completed/zero/recording records, known unfollowed videos, cached failures, repeated cursors and account switches. Live tests use native named callbacks, archive identity, confirmation/readback, latency, pause/background and missing archives. Preview tests run the actual HLS/native pipeline, close a popup before an old response arrives, verify native clearing before modal visibility, block restores and switch tabs without clearing full playback. Existing key-input tests wait for the actual click guard; a stubbed VOD opener explicitly closes its deliberately unfinished loading popup before preview assertions.
+
+## 0.25 navigation focus
+
+Exit from the header keeps its navigation context suspended under the modal. Cancel, Back and timeout restore the same header button without reinitializing the page; Down resumes the saved content selection. The exit dialog owns DOM focus and captures keydown/keyup/keypress, prevents default activation, resets its cursor and ignores key repeats. Following long-OK is canceled on leaving its focus region. Deferred grid focus cannot override header, channel tabs or the exit dialog. Channel tab entry clears grid focus and native previews. Browser regressions exercise real remote events, all exit dismissal paths, unchanged request counts and exclusive channel/header/grid focus.
