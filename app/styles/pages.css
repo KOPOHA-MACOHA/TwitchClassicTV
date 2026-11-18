@@ -379,7 +379,8 @@
 .classic-shell #screens_holder .classic-video-card .stream_thumbnail_live_img::after {
     content: none !important;
 }
-.classic-shell #screens_holder .classic-video-card .stream_thumbnail_focused .stream_thumbnail_live_img {
+.classic-shell #screens_holder .classic-video-card .stream_thumbnail_focused .stream_thumbnail_live_img,
+.classic-shell #screens_holder .classic-video-card .stream_thumbnail_focused_no_ani .stream_thumbnail_live_img {
     border-color: #9146ff;
     outline: none;
 }

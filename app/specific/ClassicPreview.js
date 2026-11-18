@@ -2,7 +2,7 @@
 var ClassicPreview = {epoch: 0, sequence: 0, requests: {}, resumeTimer: null};
 function ClassicPreview_blocked() {
     if (typeof Main_Scene1Doc === 'undefined' || !Main_Scene1Doc) return true;
-    if (!Main_isScene1DocVisible() || Main_isStopped || ClassicShell_navActive || Settings_isVisible() || Main_values.Main_Go === Main_addUser)
+    if (!Main_isScene1DocVisible() || Main_isStopped || ClassicShell_navActive || ChannelClassic_tabFocus || Settings_isVisible() || Main_values.Main_Go === Main_addUser)
         return true;
     return Array.prototype.some.call(document.querySelectorAll('[role="dialog"], [id*="dialog"]'), function (node) {
         if (node.closest('#scene2') && (typeof Main_Scene2Doc === 'undefined' || !Main_Scene2Doc || !Main_isScene2DocVisible())) return false;
@@ -47,8 +47,13 @@ function ClassicPreview_resume() {
     window.clearTimeout(ClassicPreview.resumeTimer);
     ClassicPreview.resumeTimer = window.setTimeout(function () {
         if (ClassicPreview_blocked()) return;
-        if (FollowingClassic.active) FollowingClassic_preview(FollowingClassic.rows[FollowingClassic.cursor]);
-        else if (Main_values.Main_Go === Main_ChannelContent) ChannelContent_LoadPreview();
+        if (FollowingClassic.active && Main_values.Main_Go === Main_UserLive) {
+            var row = FollowingClassic.rows[FollowingClassic.cursor];
+            // A response under a dialog can replace the node that held focus.
+            if (row && (!row.node.classList.contains('is-focused') || document.activeElement !== row.node))
+                FollowingClassic_focus(true);
+            else FollowingClassic_preview(row);
+        } else if (Main_values.Main_Go === Main_ChannelContent) ChannelContent_LoadPreview();
         else if (ScreenObj[Main_values.Main_Go] && ScreenObj[Main_values.Main_Go].screenType === 0) Screens_LoadPreview(Main_values.Main_Go);
     }, 80);
 }

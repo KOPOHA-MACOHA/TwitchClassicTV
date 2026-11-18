@@ -63,6 +63,8 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
             Main_SetStringsMain();
             Main_values.Main_Go = Main_Live;
             ScreensObj_SetTopLable(STR_LIVE);
+            Settings_value.app_animations.defaultValue = 0;
+            Settings_SetAnimations();
             var s = ScreenObj[Main_Live];
             s.tableDoc.replaceChildren();
             s.DataObj = {};
@@ -131,7 +133,7 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         assert.equal(await page.locator('#side_panel_new_holder').isVisible(), false);
         assert.equal(await page.evaluate(() => ScreenObj[Main_Live].ColumnsCount), 4);
         await page.screenshot({path: 'tests/home-classic.png'});
-        const selectedThumb = page.locator('#screens_holder .stream_thumbnail_focused .stream_thumbnail_live_img').first();
+        const selectedThumb = page.locator('#screens_holder .stream_thumbnail_focused_no_ani .stream_thumbnail_live_img').first();
         const thumb = PNG.sync.read(await selectedThumb.screenshot());
         for (const [x, y] of [
             [Math.floor(thumb.width / 2), 1],
@@ -143,6 +145,12 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
             assert.deepEqual(Array.from(thumb.data.slice(at, at + 3)), [145, 70, 255]);
         }
 
+        await page.evaluate(() => {
+            Settings_value.app_animations.defaultValue = 1;
+            Settings_SetAnimations();
+        });
+        assert.equal(await selectedThumb.count(), 0);
+        assert.equal(await page.locator('#screens_holder .stream_thumbnail_focused .stream_thumbnail_live_img').count(), 1);
         const table = await page.evaluate(() => ScreenObj[Main_Live].table);
         const cards = await page.locator('#' + table + ' .stream_thumbnail_live_holder').count();
         assert.equal(cards, 8);
@@ -486,6 +494,19 @@ for (const name of ['classic_icon', 'classic_banner', 'classic_background']) {
         assert.equal(await page.locator('.following-channel-card').count(), 1);
         assert.equal(livePages, 2);
         assert.equal(channelPages, 2);
+        // A startup update can cover the page while its network responses redraw the cards.
+        await page.evaluate(() => {
+            ClassicUpdates_showDialog();
+            FollowingClassic_render();
+        });
+        assert.equal(await page.locator('#classic_following_page .is-focused').count(), 0);
+        assert.equal(await page.locator('#classic_update_prompt button.is-focused').count(), 1);
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => {
+            const row = FollowingClassic.rows[FollowingClassic.cursor];
+            return row.node === document.activeElement && row.node.classList.contains('is-focused');
+        });
+        assert.equal(await page.locator('#classic_following_page .is-focused').count(), 1);
         // Cancel, Back and the auto-close preserve the header which opened the dialog.
         // No screen reinit, hidden Enter click or async focus theft is allowed.
         for (const close of ['Enter', 'Escape', 'Backspace', 'timeout']) {

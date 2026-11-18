@@ -1804,18 +1804,14 @@ function Settings_SetAnimations() {
 
     if (UserLiveFeed_DataObj.length) UserLiveFeed_FeedRemoveFocus(UserLiveFeed_FeedPosX);
 
-    array = document.getElementsByClassName(Main_classThumb);
-
-    try {
-        //Array.prototype maybe not supported by all browsers
-        Array.prototype.forEach.call(array, function (el) {
-            el.classList.remove(Main_classThumb);
-        });
-    } catch (e) {
-        Main_Log('Settings_SetAnimations Array.prototype crash ' + e);
-    }
-
+    var previousFocusClass = Main_classThumb;
     Main_classThumb = animate ? 'stream_thumbnail_focused' : 'stream_thumbnail_focused_no_ani';
+    if (previousFocusClass !== Main_classThumb) {
+        document.querySelectorAll('.' + previousFocusClass).forEach(function (el) {
+            el.classList.remove(previousFocusClass);
+            el.classList.add(Main_classThumb);
+        });
+    }
     UserLiveFeed_FocusClass = animate ? 'feed_thumbnail_focused' : 'feed_thumbnail_focused_no_ani';
     Screens_SettingDoAnimations = animate;
 }

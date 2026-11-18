@@ -1,4 +1,4 @@
-# Twitch Classic 0.29
+# Twitch Classic 0.30
 
 Personal Android TV fork of [SmartTwitchTV](https://github.com/fgl27/SmartTwitchTV), GPL-3.0-or-later.
 Upstream source revision: `7ca7b76249b4c2a6b2f44932641f49894410c99a`.
