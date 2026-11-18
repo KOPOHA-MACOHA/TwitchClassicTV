@@ -27,17 +27,13 @@ function emoteURLFromObj(obj, replaceDark) {
     return replaceDark ? value.replace('light', 'dark') : value;
 }
 
-function emoteTemplate(url, srcset) {
+function emoteTemplate(url, srcset, code) {
     url = ClassicFeatures_proxyUrl(url);
     if (srcset && ClassicFeatures_enabled('emote_proxy')) srcset = srcset.replace(/https?:\/\/[^\s,]+/g, ClassicFeatures_proxyUrl);
     return (
-        '<img class="emoticon" alt="" ' +
-        (srcset ? 'srcset="' + srcset + '"' : '') +
-        ' src="' +
-        url +
-        '" onerror="this.onerror=null;this.src=\'' +
-        url +
-        '\';">'
+        '<img class="emoticon" alt="' + ClassicChat_escape(code || '') + '"' +
+        (srcset ? ' srcset="' + ClassicChat_escape(srcset) + '"' : '') +
+        ' src="' + ClassicChat_escape(url) + '" onerror="ClassicChat_emoteFailed(this)">'
     );
 }
 
@@ -166,7 +162,7 @@ function emoticonize(message, emotes) {
         tokenizedMessage.unshift(punycode.ucs2.encode(message.slice(replacement.last + 1)));
 
         // Unshift the emote HTML (but not as a string to allow us to process links and escape html still)
-        tokenizedMessage.unshift([emoteTemplate(emoteURL(replacement.id))]);
+        tokenizedMessage.unshift([emoteTemplate(emoteURL(replacement.id), null, punycode.ucs2.encode(message.slice(replacement.first, replacement.last + 1)))]);
 
         // Splice the unparsed piece of the message
         message = message.slice(0, replacement.first);

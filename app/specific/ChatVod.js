@@ -379,7 +379,7 @@ function Chat_loadEmotesbttvGlobal(data) {
         data.forEach(function (emote) {
             srcset = ChatLive_bttv_srcset(emote.id);
             url = ChatLive_Base_BTTV_url + emote.id + '/3x';
-            chat_div = emoteTemplate(url, srcset);
+            chat_div = emoteTemplate(url, srcset, emote.code);
             id = emote.code + emote.id;
 
             extraEmotes[0][emote.code] = {
@@ -592,7 +592,7 @@ function Chat_loadChatSuccess(responseObj, id) {
                 fragment = mmessage.fragments[j];
 
                 if (fragment.emote) {
-                    msgArray.push([emoteTemplate(emoteURL(fragment.emote.emoteID))]);
+                    msgArray.push([emoteTemplate(emoteURL(fragment.emote.emoteID), null, fragment.text)]);
                 } else {
                     msgArray.push(fragment.text);
 

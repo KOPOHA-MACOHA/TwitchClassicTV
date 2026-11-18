@@ -24,6 +24,47 @@ const assert = require('assert/strict');
         await page.goto('http://127.0.0.1:8765/app/index.html?asset-test=1');
         await page.waitForFunction(() => typeof ClassicChat_render === 'function' && typeof Main_values !== 'undefined' && !!Main_values.Main_Go);
         await page.keyboard.press('Escape');
+        // Refresh the real channel lookup while leaving its chat session open.
+        await page.route('https://7tv.io/v3/users/twitch/987654', route =>
+            route.fulfill({json: {emote_set: {emotes: [{
+                name: 'JustAdded',
+                data: {name: 'OriginalName', id: 'new-emote', host: {
+                    url: 'https://cdn.7tv.app/emote/new-emote',
+                    files: [{format: 'AVIF', name: '2x.avif'}]
+                }}
+            }]}}})
+        );
+        await page.route('https://cdn.7tv.app/emote/new-emote/**', route => route.fulfill({status: 404}));
+        await page.evaluate(() => {
+            Chat_Id[0] = 987;
+            ChatLive_selectedChannel_id[0] = '987654';
+            extraEmotes[0] = {};
+            extraEmotesDone.seven_tv['987654'] = {};
+            const fixture = document.createElement('div');
+            fixture.id = 'emote-refresh-test';
+            fixture.innerHTML = ClassicChat_render(['JustAdded constructor'], 0, 0);
+            document.body.appendChild(fixture);
+            ChatLive_EmoteRefreshInterval = 50;
+            ChatLive_scheduleEmoteRefresh(0, 987);
+        });
+        assert.equal(await page.locator('#emote-refresh-test').textContent(), 'JustAdded constructor');
+        await page.waitForFunction(() => !!extraEmotes[0].JustAdded);
+        await page.evaluate(() => {
+            ChatLive_ClearIds(0);
+            ChatLive_EmoteRefreshInterval = 60000;
+            document.getElementById('emote-refresh-test').innerHTML = ClassicChat_render(['JustAdded'], 0, 0);
+        });
+        await page.waitForFunction(() => document.getElementById('emote-refresh-test').textContent === 'JustAdded');
+        await page.evaluate(() => {
+            Chat_Id[0]++;
+            extraEmotes[0] = {};
+            ChatLive_loadEmotesChannelSeven_tvSuccess('{invalid', 0, Chat_Id[0]);
+            ChatLive_loadEmotesChannelBTTVSuccess('{invalid', 0, Chat_Id[0]);
+            ChatLive_loadEmotesChannelFFZSuccess('{invalid', 0, Chat_Id[0]);
+            ChatLive_loadEmotesChannelSeven_tvSuccess('{"emote_set":{"emotes":[]}}', 0, 987);
+            if (Object.keys(extraEmotes[0]).length) throw Error('An old refresh modified a newer chat');
+            document.getElementById('emote-refresh-test').remove();
+        });
         // Huge zero-width layers and z! must never paint over the nickname.
         for (const message of [
             'w! Base Overlay',

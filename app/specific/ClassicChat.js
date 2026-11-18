@@ -19,6 +19,13 @@ var ClassicChat_modifiers = {
 function ClassicChat_escape(value) {
     return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+function ClassicChat_emoteFailed(image) {
+    if (image.hasAttribute('srcset') && image.currentSrc && image.currentSrc !== image.src) {
+        image.removeAttribute('srcset');
+        return;
+    }
+    image.replaceWith(document.createTextNode(image.alt));
+}
 function ClassicChat_image(token) {
     if (!ClassicFeatures_enabled('chat_images')) return null;
     try {
@@ -102,7 +109,7 @@ function ClassicChat_render(chunks, chatNumber, bits) {
                     last.modifiers.push(modifier);
                     return;
                 }
-                if (emote) {
+                if (emote && emote.chat_div) {
                     appendEmote(emote.chat_div, !!emote.chat_div_zero);
                     return;
                 }
