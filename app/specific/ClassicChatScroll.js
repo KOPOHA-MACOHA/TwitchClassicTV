@@ -102,8 +102,9 @@ function ClassicChatScroll_key(event, kind) {
         ClassicChatScroll_resume();
         Chat_Clean(0);
     } else if ((key === KEY_RETURN || key === KEY_KEYBOARD_BACKSPACE) && !event.repeat) {
-        ClassicChatScroll.active = false;
-        ClassicChatScroll_render();
+        var wasPaused = ClassicChatScroll.paused;
+        ClassicChatScroll_reset();
+        if (wasPaused) Chat_Clean(0);
         document.getElementById('classic_chat_resume').blur();
         if (kind === 1) Play_showPanel();
         else if (kind === 2) PlayVod_showPanel(true);
