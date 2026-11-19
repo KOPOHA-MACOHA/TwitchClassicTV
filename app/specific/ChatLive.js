@@ -2139,6 +2139,7 @@ function ChatLive_ClearIds(chat_number) {
 }
 
 function ChatLive_Clear(chat_number) {
+    if (!chat_number) ClassicChatScroll_reset();
     ChatLive_ClearIds(chat_number);
 
     Chat_Id[chat_number] = 0;

@@ -3542,6 +3542,7 @@
                                 <div id="chat_box0"></div>
                             </div>
                         </div>
+                        <button id="classic_chat_resume" type="button" hidden onclick="if (ClassicChatScroll.paused) { ClassicChatScroll_resume(); Chat_Clean(0); }"></button>
                         <div id="play_chat_dialog" style="position: absolute; text-align: center; width: 100%; margin-top: 50%">
                             <div id="play_chat_dialog_text" class="strokedeline" style="display: inline-block; font-size: 4vh; color: #ffffff"></div>
                         </div>
@@ -4425,6 +4426,7 @@
         <script src="specific/PlayMulti.js" defer></script>
         <script src="specific/PlayEtc.js" defer></script>
         <script src="specific/PlayClassic.js" defer></script>
+        <script src="specific/ClassicChatScroll.js" defer></script>
         <script src="specific/ClassicMulti.js" defer></script>
         <script src="specific/ClassicUpdates.js" defer></script>
         <script src="specific/PlayExtra.js" defer></script>

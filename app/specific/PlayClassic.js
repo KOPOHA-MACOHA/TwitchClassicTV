@@ -352,6 +352,8 @@ function PlayClassic_chat() {
     rows.forEach(function (row) {
         if (row.key === Play_controlsChatSide) row.text = ClassicShell_ru() ? 'Видео и чат' : 'Video and chat';
     });
+    if (ClassicChatScroll_available())
+        rows.splice(1, 0, PlayClassic_title(ClassicShell_ru() ? 'Листать чат' : 'Scroll chat', '', ClassicChatScroll_enter));
     PlayClassic_go(STR_CHAT_OPTIONS, rows);
 }
 function PlayClassic_audio() {
@@ -603,6 +605,11 @@ function PlayClassic_navigateRow(event, kind) {
     if (!PlayClassic_enabled() || !Play_isPanelShowing() || Play_isVodDialogVisible()) return false;
     var key = event.keyCode;
     if ([KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN].indexOf(key) === -1) return false;
+    if (key === KEY_DOWN && PlayVod_PanelY === 2 && Play_PanelCounter === Play_controlsChat && ClassicChatScroll_enter()) {
+        PlayClassic_consumedKey = key;
+        event.preventDefault();
+        return true;
+    }
     if (!PlayVod_PanelY && key !== KEY_DOWN) {
         // Left/right retain the original seek behavior; Up stays on the timeline.
         if (key !== KEY_UP) return false;

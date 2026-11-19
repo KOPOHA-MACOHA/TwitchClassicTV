@@ -1685,6 +1685,7 @@ function Play_handleKeyUpEndClear() {
 }
 
 function Play_handleKeyDown(e) {
+    if (ClassicChatScroll_key(e, 1)) return;
     if (PlayClassic_isOpen()) { PlayClassic_handleKeyDown(e); return; }
     //console.log('Play_handleKeyDown', e.keyCode);
 

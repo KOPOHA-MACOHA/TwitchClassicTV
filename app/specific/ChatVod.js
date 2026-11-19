@@ -704,6 +704,7 @@ function Chat_Pause() {
 }
 
 function Chat_Clear() {
+    ClassicChatScroll_reset();
     // on exit cleanup the div
     Chat_hasEnded = false;
     Chat_Pause();
@@ -862,7 +863,8 @@ function Chat_Clean(chat_number) {
     //delete old lines out of view
     var linesToDelete = Chat_div[chat_number].getElementsByClassName('chat_line_holder'),
         i = 0,
-        len = linesToDelete.length - Chat_CleanMax;
+        limit = !chat_number && ClassicChatScroll.paused ? Chat_CleanMax * 4 : Chat_CleanMax,
+        len = linesToDelete.length - limit;
 
     for (i; i < len; i++) {
         Chat_div[chat_number].removeChild(linesToDelete[0]);

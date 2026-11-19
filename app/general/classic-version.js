@@ -1,2 +1,2 @@
 /* Generated from fork-build/version.json. GPL-3.0-or-later. */
-var ClassicBuild = {"name": "0.31", "code": 410, "repository": "KOPOHA-MACOHA/TwitchClassicTV"};
+var ClassicBuild = {"name": "0.32", "code": 411, "repository": "KOPOHA-MACOHA/TwitchClassicTV"};

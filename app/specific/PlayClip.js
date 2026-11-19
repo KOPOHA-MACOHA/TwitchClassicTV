@@ -745,6 +745,7 @@ function PlayClip_CheckPreviewClip() {
 }
 
 function PlayClip_handleKeyDown(e) {
+    if (ClassicChatScroll_key(e, 3)) return;
     if (PlayClassic_isOpen()) { PlayClassic_handleKeyDown(e); return; }
     //console.log('PlayClip_handleKeyDown', e.keyCode);
 

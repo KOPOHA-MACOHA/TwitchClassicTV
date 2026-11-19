@@ -1091,6 +1091,7 @@ function PlayVod_SetPreview() {
 }
 
 function PlayVod_handleKeyDown(e) {
+    if (ClassicChatScroll_key(e, 2)) return;
     if (PlayClassic_isOpen()) { PlayClassic_handleKeyDown(e); return; }
     //console.log('PlayVod_handleKeyDown', e.keyCode);
 

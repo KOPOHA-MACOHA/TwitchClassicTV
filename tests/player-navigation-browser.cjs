@@ -407,6 +407,65 @@ const {PNG} = require('pngjs');
             }
             await page.setViewportSize({width: 1920, height: 1080});
         }
+        // Real player handlers and the rotated chat viewport, with messages arriving during review.
+        for (const kind of [1, 2]) {
+            await page.evaluate(kind => {
+                Main_clearAllPlayerEvents();
+                Play_isOn = kind === 1;
+                PlayVod_isOn = kind === 2;
+                PlayClip_isOn = false;
+                if (kind === 1) Main_PlayHandleKeyDown();
+                else Main_PlayVodHandleKeyDown();
+                Play_PanneInfoDoclId.style.opacity = 1;
+                PlayVod_PanelY = 2;
+                Play_PanelCounter = Play_controlsChat;
+                Play_SetControlsVisibility(kind === 1 ? 'ShowInLive' : 'ShowInVod');
+                Play_showChat();
+                Chat_div[0].replaceChildren();
+                window.addChatLines = (start, count) => {
+                    for (let i = start; i < start + count; i++)
+                        ChatLive_ElementAdd({chat_number: 0, message: 'Message ' + i});
+                };
+                ChatLive_chat_line_class = 'chat_line_holder';
+                addChatLines(0, 60);
+            }, kind);
+            if (kind === 1) {
+                await page.keyboard.press('Enter');
+                await page.keyboard.press('ArrowDown');
+                assert.match(await page.locator('#classic_settings_rows button:focus').innerText(), /Листать чат/);
+                await page.keyboard.press('Enter');
+            } else await page.keyboard.press('ArrowDown');
+            assert.equal(await page.evaluate(() => ClassicChatScroll.active), true);
+            assert.equal(await page.locator('#classic_chat_resume').evaluate(b => b === document.activeElement), true);
+            await page.keyboard.press('ArrowUp');
+            assert.equal(await page.evaluate(() => ClassicChatScroll.paused), true);
+            assert.match(await page.locator('#classic_chat_resume').innerText(), /К новым сообщениям/);
+            const position = await page.evaluate(() => {
+                const holder = document.getElementById('chat_box_holder0');
+                window.checkedAnchor = ClassicChatScroll.anchor;
+                return {offset: holder.scrollTop, top: checkedAnchor.getBoundingClientRect().top};
+            });
+            assert.ok(position.offset > 0);
+            await page.evaluate(() => addChatLines(60, 12));
+            await page.waitForFunction(({top, offset}) => {
+                const holder = document.getElementById('chat_box_holder0');
+                return holder.scrollTop > offset && Math.abs(checkedAnchor.getBoundingClientRect().top - top) < 2;
+            }, position, {timeout: 4000});
+            await page.keyboard.press('ArrowDown');
+            assert.equal(await page.evaluate(() => ClassicChatScroll.paused), true, 'Down does not turn autoscroll back on');
+            await page.keyboard.press('Escape');
+            assert.equal(await page.evaluate(() => !ClassicChatScroll.active && ClassicChatScroll.paused), true);
+            assert.equal(await page.evaluate(() => Play_isPanelShowing() && Play_PanelCounter === Play_controlsChat), true);
+            await page.keyboard.press('ArrowDown');
+            await page.keyboard.press('Enter');
+            assert.equal(await page.evaluate(() => ClassicChatScroll.paused), false);
+            assert.equal(await page.locator('#chat_box_holder0').evaluate(e => e.scrollTop), 0);
+            await page.evaluate(() => addChatLines(72, 3));
+            assert.equal(await page.locator('#chat_box_holder0').evaluate(e => e.scrollTop), 0);
+            await page.evaluate(() => Play_hideChat());
+            assert.equal(await page.evaluate(() => ClassicChatScroll.active), false);
+            assert.equal(await page.locator('#classic_chat_resume').isVisible(), false);
+        }
         assert.deepEqual(errors, []);
         console.log(
             'PASS: actual player keydown/keyup, root menu stays open, working bottom quality button, consistent current-quality label and checkmark, no catch-all duplicates, native split/overlay resize calls and persisted layout, restored submenu focus, all original controls reachable'

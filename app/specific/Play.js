@@ -1845,6 +1845,7 @@ function Play_showChat() {
 }
 
 function Play_hideChat() {
+    ClassicChatScroll_reset();
     Play_chat_container.classList.add('hide');
     Play_controls[Play_controlsChat].setLabel();
 

@@ -282,3 +282,31 @@
         transform: rotate(360deg);
     }
 }
+
+#chat_box_holder0 {
+    overflow-anchor: none;
+}
+.classic-player-ui .classic-chat-scroll-footer #chat_box_holder0 {
+    height: calc(100% - 4.6vh) !important;
+}
+.classic-chat-scroll-focus {
+    outline: 0.3vh solid #9146ff;
+    outline-offset: -0.3vh;
+}
+#classic_chat_resume {
+    position: absolute;
+    z-index: 3;
+    bottom: 0.4vh;
+    left: 0.5vw;
+    right: 0.5vw;
+    height: 3.8vh;
+    border: 0.2vh solid transparent;
+    border-radius: 0.6vh;
+    background: #29292e;
+    color: #efeff1;
+    font: 600 1.7vh Inter, Arial, sans-serif;
+}
+#classic_chat_resume:focus {
+    border-color: #bf94ff;
+    outline: none;
+}
