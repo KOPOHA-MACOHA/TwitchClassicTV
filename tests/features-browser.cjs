@@ -188,6 +188,52 @@ const assert = require('assert/strict');
         );
         assert.ok(mediaLayout.images[0].top >= Math.max(mediaLayout.nick.bottom, mediaLayout.badge.bottom), JSON.stringify(mediaLayout));
         assert.ok(mediaLayout.images[1].top >= mediaLayout.images[0].bottom, JSON.stringify(mediaLayout));
+        await page.evaluate(async () => {
+            const host = document.createElement('div');
+            document.body.appendChild(host);
+            const originalChat = Chat_div[0];
+            const clearChat = ChatLive_ClearChat;
+            Chat_div[0] = host;
+            ClassicFeatures_set('chat_images', true);
+            try {
+                const add = id => ChatLive_ElementAdd({
+                    chat_number: 0,
+                    message: '<span id="mod-' + id + '" class="9876 message">' +
+                        ClassicChat_render(['https://example.test/picture.png'], 0, 0) + '</span>'
+                });
+                const check = (node, img) => {
+                    if (node.querySelector('img') !== img || !img.naturalWidth)
+                        throw Error('Moderation replaced a decoded image');
+                    if (!node.parentNode.classList.contains('chat_purged'))
+                        throw Error('Deleted message lost its moderation marker');
+                };
+                ChatLive_ClearChat = false;
+                add(1);
+                const single = host.querySelector('#mod-1');
+                const image = single.querySelector('img');
+                image.loading = 'eager';
+                await image.decode();
+                ChatLive_CleanMessage({tags: {'target-msg-id': 'mod-1'}});
+                check(single, image);
+                add(2);
+                add(3);
+                const messages = [...host.querySelectorAll('#mod-2, #mod-3')];
+                const images = messages.map(node => node.querySelector('img'));
+                await Promise.all(images.map(img => { img.loading = 'eager'; return img.decode(); }));
+                ChatLive_CleanUser(0, {tags: {'target-user-id': '9876'}});
+                messages.forEach((node, index) => check(node, images[index]));
+                ChatLive_ClearChat = true;
+                add(4);
+                const hidden = host.querySelector('#mod-4');
+                ChatLive_CleanMessage({tags: {'target-msg-id': 'mod-4'}});
+                if (hidden.querySelector('img')) throw Error('Hidden message still shows an image');
+            } finally {
+                Chat_div[0] = originalChat;
+                ChatLive_ClearChat = clearChat;
+                ClassicFeatures_set('chat_images', false);
+                host.remove();
+            }
+        });
         const chat = await page.evaluate(() => {
             Main_HideWelcomeDialog();
             Main_HideWarningDialog();

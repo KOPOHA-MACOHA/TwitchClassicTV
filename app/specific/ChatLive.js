@@ -2188,10 +2188,10 @@ function ChatLive_CleanUser(chat_number, message) {
 
         try {
             //Array.prototype maybe not supported by all browsers
-            Array.prototype.forEach.call(array, function (el) {
+            Array.from(array).forEach(function (el) {
                 if (el) {
                     if (ChatLive_ClearChat) el.innerHTML = msg;
-                    else el.innerHTML += STR_BR + STR_BR + msg;
+                    else el.insertAdjacentHTML('beforeend', STR_BR + STR_BR + msg);
 
                     Main_AddClassWithEle(el.parentElement, 'chat_purged');
                     //Prevent duplicate removal
@@ -2224,7 +2224,7 @@ function ChatLive_CleanMessage(message) {
 
         if (el) {
             if (ChatLive_ClearChat) el.innerHTML = STR_CHAT_MESSAGE_DELETED;
-            else el.innerHTML += STR_BR + STR_BR + STR_CHAT_MESSAGE_DELETED;
+            else el.insertAdjacentHTML('beforeend', STR_BR + STR_BR + STR_CHAT_MESSAGE_DELETED);
 
             Main_AddClassWithEle(el.parentElement, 'chat_purged');
             //Prevent duplicate removal
